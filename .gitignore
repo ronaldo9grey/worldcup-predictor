@@ -97,3 +97,10 @@ backend/data/*.json
 !backend/data/world_cup_2026.py
 !backend/data/historical_world_cups.py
 backend/data/*.db
+backend/data/*.pkl
+backend/data/*.pickle
+backend/data/trained_models/
+backend/data/__pycache__/
+
+# 前端构建产物
+frontend/dist/
