@@ -9,6 +9,7 @@ from data.players import get_team_squad, get_squad_strength, compare_squads
 from data.coaches import get_coach_info, calculate_coach_rating, compare_coaches
 from data.venue_weather import get_venue_factor_for_match, get_match_venue
 from services.model_ensemble import get_ensemble
+from services.score_predictor import ScorePredictor
 
 router = APIRouter(prefix="/api/calculation", tags=["计算过程"])
 
@@ -297,6 +298,10 @@ async def get_match_calculation(group: str, match_index: int) -> Dict[str, Any]:
         }
     }
     
+    # 比分预测
+    score_predictor = ScorePredictor()
+    score_pred = score_predictor.predict(home_team, away_team)
+    
     return {
         "match_id": f"{group}_{match_index}",
         "group": group,
@@ -329,6 +334,14 @@ async def get_match_calculation(group: str, match_index: int) -> Dict[str, Any]:
         },
         "prediction": "主胜" if bayesian_pred.home_win_prob > bayesian_pred.draw_prob and bayesian_pred.home_win_prob > bayesian_pred.away_win_prob else "客胜" if bayesian_pred.away_win_prob > bayesian_pred.home_win_prob else "平局",
         "confidence": "高" if bayesian_pred.confidence > 0.5 else "中" if bayesian_pred.confidence > 0.3 else "低",
+        "status": "待揭晓",
+        # 新增：比分预测
+        "score_prediction": {
+            "expected_goals": score_pred["expected_goals"],
+            "top_predictions": score_pred["score_predictions"]
+        },
+        # 新增：大小球预测
+        "over_under": score_pred["over_under"],
         "squad_info": _build_squad_info(home_code, away_code),
         "coach_info": _build_coach_info(home_code, away_code),
         "venue_info": _build_venue_info(group, home_code, away_code, match_index)
