@@ -178,10 +178,81 @@
           </div>
         </div>
 
-        <!-- 步骤5: 预测结论 -->
-        <div class="step-section final">
+        <!-- 步骤5: 比分预测 -->
+        <div class="step-section" v-if="calculation.score_prediction">
           <div class="step-header">
             <div class="step-badge">5</div>
+            <div class="step-title">比分预测</div>
+            <div class="step-note">基于泊松分布计算最可能比分</div>
+          </div>
+          <div class="score-prediction-card">
+            <div class="expected-goals">
+              <div class="goals-item">
+                <span class="goals-label">主队期望进球</span>
+                <span class="goals-value">{{ calculation.score_prediction.expected_goals.home }}</span>
+              </div>
+              <div class="goals-item">
+                <span class="goals-label">客队期望进球</span>
+                <span class="goals-value">{{ calculation.score_prediction.expected_goals.away }}</span>
+              </div>
+            </div>
+            <div class="top-scores">
+              <div class="scores-title">最可能比分</div>
+              <div class="scores-list">
+                <div class="score-item" v-for="(pred, idx) in calculation.score_prediction.top_predictions" :key="idx">
+                  <span class="score-num">{{ idx + 1 }}</span>
+                  <span class="score-text" :class="pred.result === '主胜' ? 'home-win' : pred.result === '平局' ? 'draw' : 'away-win'">{{ pred.score }}</span>
+                  <span class="score-prob">{{ pred.probability }}</span>
+                  <span class="score-result">{{ pred.result }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 步骤6: 大小球预测 -->
+        <div class="step-section" v-if="calculation.over_under">
+          <div class="step-header">
+            <div class="step-badge">6</div>
+            <div class="step-title">大小球预测</div>
+            <div class="step-note">总进球数分析</div>
+          </div>
+          <div class="over-under-card">
+            <div class="ou-expected">
+              <span class="ou-label">预期总进球数</span>
+              <span class="ou-total">{{ calculation.score_prediction.expected_goals.total }} 球</span>
+            </div>
+            <div class="ou-probs">
+              <div class="ou-prob-item">
+                <span class="ou-prob-label">大{{ calculation.over_under.line }}</span>
+                <div class="ou-prob-bar">
+                  <div class="ou-prob-fill over" :style="{width: calculation.over_under.over_probability}"></div>
+                </div>
+                <span class="ou-prob-val">{{ calculation.over_under.over_probability }}</span>
+              </div>
+              <div class="ou-prob-item">
+                <span class="ou-prob-label">小{{ calculation.over_under.line }}</span>
+                <div class="ou-prob-bar">
+                  <div class="ou-prob-fill under" :style="{width: calculation.over_under.under_probability}"></div>
+                </div>
+                <span class="ou-prob-val">{{ calculation.over_under.under_probability }}</span>
+              </div>
+            </div>
+            <div class="ou-recommendation">
+              <span class="ou-rec-label">推荐</span>
+              <span class="ou-rec-value" :class="calculation.over_under.recommendation.startsWith('大') ? 'over' : 'under'">{{ calculation.over_under.recommendation }}</span>
+              <span class="ou-conf">置信度 {{ calculation.over_under.confidence }}</span>
+            </div>
+            <div class="ou-reasoning">
+              💡 {{ calculation.over_under.reasoning }}
+            </div>
+          </div>
+        </div>
+        
+        <!-- 步骤7: 预测结论 -->
+        <div class="step-section final">
+          <div class="step-header">
+            <div class="step-badge">7</div>
             <div class="step-title">预测结论</div>
           </div>
           <div class="prediction-result">
@@ -196,6 +267,11 @@
               💡 此预测基于2018+2022世界杯数据训练的模型，仅供参考
             </div>
           </div>
+        </div>
+        
+        <!-- 预测状态 -->
+        <div class="prediction-status">
+          <span class="status-badge">🔴 {{ calculation.status || '待揭晓' }}</span>
         </div>
       </div>
     </div>
@@ -782,5 +858,244 @@ export default {
 @keyframes slideUp {
   from { transform: translateY(30px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+/* 比分预测卡片 */
+.score-prediction-card {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.expected-goals {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 16px;
+}
+
+.goals-item {
+  text-align: center;
+}
+
+.goals-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.goals-value {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1976d2;
+}
+
+.top-scores {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.scores-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.scores-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.score-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+.score-num {
+  width: 24px;
+  height: 24px;
+  background: #1976d2;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.score-text {
+  font-size: 1.2rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.score-text.home-win {
+  color: #2e7d32;
+}
+
+.score-text.draw {
+  color: #e65100;
+}
+
+.score-text.away-win {
+  color: #c62828;
+}
+
+.score-prob {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.score-result {
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  background: #e8f5e9;
+  border-radius: 4px;
+  color: #2e7d32;
+}
+
+/* 大小球预测卡片 */
+.over-under-card {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.ou-expected {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.ou-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.ou-total {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #e65100;
+}
+
+.ou-probs {
+  margin-bottom: 16px;
+}
+
+.ou-prob-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ou-prob-label {
+  width: 50px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.ou-prob-bar {
+  flex: 1;
+  height: 20px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ou-prob-fill {
+  height: 100%;
+  border-radius: 10px;
+}
+
+.ou-prob-fill.over {
+  background: linear-gradient(90deg, #4caf50, #66bb6a);
+}
+
+.ou-prob-fill.under {
+  background: linear-gradient(90deg, #ff9800, #ffb74d);
+}
+
+.ou-prob-val {
+  width: 50px;
+  text-align: right;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.ou-recommendation {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.ou-rec-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-right: 8px;
+}
+
+.ou-rec-value {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 8px;
+}
+
+.ou-rec-value.over {
+  background: #4caf50;
+  color: white;
+}
+
+.ou-rec-value.under {
+  background: #ff9800;
+  color: white;
+}
+
+.ou-conf {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.ou-reasoning {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+}
+
+/* 预测状态 */
+.prediction-status {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #fff3e0;
+  border: 2px solid #ff9800;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e65100;
 }
 </style>
