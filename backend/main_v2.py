@@ -9,7 +9,6 @@ from services.prediction_engine_v2 import PredictionEngineV2
 from services.strict_simulation import StrictSimulationEngine
 from services.prediction_engine_v4 import create_v4_engine
 from services.ensemble_instance import get_ensemble
-from services.model_ensemble import get_ensemble
 from data.world_cup_2026 import GROUPS, get_all_teams, get_team_lookup, get_groups as get_groups_dict
 from api.user import router as user_router
 from api.accuracy import router as accuracy_router
@@ -24,6 +23,7 @@ from api.data_extension import router as data_extension_router
 from api.leaderboard import router as leaderboard_router
 from api.share import router as share_router
 from api.bayesian import router as bayesian_router
+from api.model_versions import router as model_versions_router
 
 # 使用完整的队伍信息（包含所有字段）
 GROUPS_FULL = get_groups_dict()
@@ -44,6 +44,7 @@ app.include_router(data_extension_router)
 app.include_router(leaderboard_router)
 app.include_router(share_router)
 app.include_router(bayesian_router)  # 贝叶斯可视化扩展
+app.include_router(model_versions_router)  # 模型版本管理
 
 # 静态文件服务（前端）
 frontend_dist = "/var/www/worldcup-predictor/frontend/dist"

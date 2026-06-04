@@ -7,7 +7,7 @@ from typing import Dict, Optional
 from pydantic import BaseModel
 
 from services.online_learning import get_online_learning
-from services.model_ensemble import get_ensemble
+from services.ensemble_instance import get_ensemble
 
 router = APIRouter(prefix="/api/learning", tags=["learning"])
 

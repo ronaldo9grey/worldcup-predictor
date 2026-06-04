@@ -8,7 +8,7 @@ from data.world_cup_2026 import GROUPS, ALL_TEAMS, get_groups as get_groups_dict
 from data.players import get_team_squad, get_squad_strength, compare_squads
 from data.coaches import get_coach_info, calculate_coach_rating, compare_coaches
 from data.venue_weather import get_venue_factor_for_match, get_match_venue
-from services.model_ensemble import get_ensemble
+from services.ensemble_instance import get_ensemble
 from services.score_predictor import ScorePredictor
 
 router = APIRouter(prefix="/api/calculation", tags=["计算过程"])

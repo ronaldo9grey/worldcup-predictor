@@ -18,7 +18,7 @@ TRAINING_STATE_FILE = "/var/www/worldcup-predictor/backend/data/training_state.j
 
 def get_ensemble():
     """获取模型集成实例"""
-    from services.model_ensemble import get_ensemble as _get_ensemble
+    from services.ensemble_instance import get_ensemble as _get_ensemble
     return _get_ensemble()
 
 

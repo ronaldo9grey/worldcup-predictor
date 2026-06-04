@@ -10,7 +10,8 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from services.model_ensemble import get_ensemble, ModelEnsemble
+from services.ensemble_instance import get_ensemble
+from services.model_ensemble import ModelEnsemble
 from services.online_learning import get_online_learning, OnlineLearningSystem
 from data.world_cup_2026 import GROUPS, get_team_lookup, get_groups as get_groups_dict
 
