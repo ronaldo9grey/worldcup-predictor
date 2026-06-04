@@ -290,11 +290,11 @@
     </div>
 
     <!-- 上次训练记录 -->
-    <div class="history-summary" v-if="trainingHistory.has_trained">
+    <div class="history-summary" v-if="modelStats.training_count > 0">
       <h3>📊 上次训练记录</h3>
       <div class="summary-info">
-        <span class="best-model">最佳模型: {{ getModelName(trainingHistory.best_model) }}</span>
-        <span class="best-accuracy">准确率: {{ ((trainingHistory.best_accuracy || 0) * 100).toFixed(1) }}%</span>
+        <span class="best-model">最佳模型: 神经网络</span>
+        <span class="best-accuracy">准确率: {{ (modelStats.best_nn_accuracy * 100).toFixed(1) }}%</span>
       </div>
     </div>
 
@@ -321,7 +321,7 @@
             <div class="model-name">神经网络</div>
             <div class="model-status">{{ modelsStatus.neural_network?.status === 'trained' ? '✅ 已训练' : '⏳ 未训练' }}</div>
             <div class="model-accuracy-display">
-              准确率: <strong>{{ trainingHistory.models?.neural_network ? (trainingHistory.models.neural_network.accuracy * 100).toFixed(1) : '-' }}%</strong>
+              准确率: <strong>{{ modelsStatus.neural_network?.status === 'trained' ? (modelStats.best_nn_accuracy * 100).toFixed(1) : '-' }}%</strong>
             </div>
           </div>
           <div class="model-weight">权重: {{ (modelWeights.neural_network * 100).toFixed(0) }}%</div>
@@ -334,7 +334,7 @@
             <div class="model-name">随机森林</div>
             <div class="model-status">{{ modelsStatus.random_forest?.status?.includes('trained') ? '✅ 已训练' : '⏳ 未训练' }}</div>
             <div class="model-accuracy-display">
-              准确率: <strong>{{ trainingHistory.models?.random_forest ? (trainingHistory.models.random_forest.accuracy * 100).toFixed(1) : '-' }}%</strong>
+              准确率: <strong>{{ modelsStatus.random_forest?.status?.includes('trained') ? (modelStats.best_rf_accuracy * 100).toFixed(1) : '-' }}%</strong>
             </div>
           </div>
           <div class="model-weight">权重: {{ (modelWeights.random_forest * 100).toFixed(0) }}%</div>
