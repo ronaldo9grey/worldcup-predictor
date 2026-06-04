@@ -5,6 +5,117 @@
       {{ toastMessage }}
     </div>
     
+    <!-- 训练确认对话框 -->
+    <div v-if="showTrainDialog" class="dialog-overlay" @click.self="showTrainDialog = false">
+      <div class="confirm-dialog">
+        <div class="dialog-header">
+          <div class="dialog-title">⚠️ 训练新模型</div>
+          <button @click="showTrainDialog = false" class="close-btn">✕</button>
+        </div>
+        
+        <div class="dialog-body">
+          <div class="train-warning" v-if="trainCheck.data_unchanged">
+            <span class="warning-icon">⚡</span>
+            <span class="warning-text">数据未变化，重复训练可能产生相似结果</span>
+          </div>
+          
+          <div class="train-reason">
+            <div class="reason-title">训练原因：</div>
+            <div class="reason-options">
+              <label :class="['reason-item', { active: trainReason === 'new_data' }]">
+                <input type="radio" value="new_data" v-model="trainReason" />
+                <span class="reason-icon">📊</span>
+                <span class="reason-text">数据更新（有新的比赛结果）</span>
+              </label>
+              <label :class="['reason-item', { active: trainReason === 'param_tune' }]">
+                <input type="radio" value="param_tune" v-model="trainReason" />
+                <span class="reason-icon">🎯</span>
+                <span class="reason-text">参数调优（修改超参数）</span>
+              </label>
+              <label :class="['reason-item', { active: trainReason === 'random_explore' }]">
+                <input type="radio" value="random_explore" v-model="trainReason" />
+                <span class="reason-icon">🎲</span>
+                <span class="reason-text">随机探索（相同参数不同结果）</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="train-info">
+            <div class="info-item">
+              <span class="info-label">训练数据：</span>
+              <span class="info-value">2018俄罗斯 + 2022卡塔尔世界杯</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">预计耗时：</span>
+              <span class="info-value">5-10 秒</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">已有版本：</span>
+              <span class="info-value">v{{ modelStats.training_count || 0 }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="dialog-footer">
+          <button class="btn-cancel" @click="showTrainDialog = false">取消</button>
+          <button class="btn-confirm" @click="confirmTraining">确认训练</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 版本选择对话框 -->
+    <div v-if="showVersionDialog" class="dialog-overlay" @click.self="showVersionDialog = false">
+      <div class="confirm-dialog version-dialog">
+        <div class="dialog-header">
+          <div class="dialog-title">📂 选择模型版本</div>
+          <button @click="showVersionDialog = false" class="close-btn">✕</button>
+        </div>
+        
+        <div class="dialog-body">
+          <div class="version-list">
+            <div 
+              v-for="ver in modelVersions" 
+              :key="ver.id"
+              :class="['version-item', { 
+                active: selectedVersion === ver.id,
+                current: ver.is_current 
+              }]"
+              @click="selectedVersion = ver.id"
+            >
+              <div class="version-radio">
+                <span :class="['radio-dot', { checked: selectedVersion === ver.id }]"></span>
+              </div>
+              <div class="version-info">
+                <div class="version-header">
+                  <span class="version-id">{{ ver.id }}</span>
+                  <span v-if="ver.is_current" class="current-badge">当前</span>
+                </div>
+                <div class="version-meta">
+                  <span class="meta-item">🧠 {{ (ver.nn_accuracy * 100).toFixed(1) }}%</span>
+                  <span class="meta-item">🌲 {{ (ver.rf_accuracy * 100).toFixed(1) }}%</span>
+                  <span class="meta-item">📅 {{ formatDate(ver.created_at) }}</span>
+                </div>
+                <div class="version-source">{{ ver.data_source }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="modelVersions.length === 0" class="no-versions">
+            暂无已保存的模型版本
+          </div>
+        </div>
+        
+        <div class="dialog-footer">
+          <button class="btn-cancel" @click="showVersionDialog = false">取消</button>
+          <button 
+            class="btn-confirm" 
+            @click="confirmLoadVersion"
+            :disabled="!selectedVersion"
+          >加载选中版本</button>
+        </div>
+      </div>
+    </div>
+    
     <!-- 贝叶斯详情弹窗 -->
     <div v-if="showBayesianDetail" class="dialog-overlay" @click.self="showBayesianDetail = false">
       <div class="bayesian-dialog">
@@ -232,14 +343,14 @@
       </div>
       
       <div class="action-buttons">
-        <button class="btn-primary" @click="startTraining" :disabled="isTraining" :class="{ 'btn-disabled': isTraining }">
+        <button class="btn-primary" @click="openTrainDialog" :disabled="isTraining" :class="{ 'btn-disabled': isTraining }">
           {{ isTraining ? '⏳ 训练中...' : '🚀 训练模型' }}
         </button>
-        <button class="btn-secondary" @click="loadSavedModels" :disabled="isTraining">
+        <button class="btn-secondary" @click="openVersionDialog" :disabled="isTraining">
           📂 加载模型
         </button>
-        <span v-if="trainingHistory.has_trained" class="training-hint">
-          ✅ 已有训练记录 ({{ trainingHistory.training_count || 0 }}次)
+        <span v-if="modelStats.training_count > 0" class="training-hint">
+          ✅ 已训练 {{ modelStats.training_count }} 次，当前版本: {{ modelStats.current_version || 'v1' }}
         </span>
       </div>
     </div>
@@ -531,6 +642,15 @@ const showBayesianDetail = ref(false)  // 贝叶斯详情弹窗
 const showNeuralNetworkDetail = ref(false)  // 神经网络详情弹窗
 const showRandomForestDetail = ref(false)  // 随机森林详情弹窗
 
+// 新增：训练和版本选择对话框
+const showTrainDialog = ref(false)
+const showVersionDialog = ref(false)
+const trainReason = ref('new_data')
+const selectedVersion = ref(null)
+const trainCheck = ref({ data_unchanged: false })
+const modelVersions = ref([])
+const modelStats = ref({ training_count: 0, current_version: null })
+
 const learningStats = ref({})
 const driftWarning = ref(false)
 const learningHistory = ref([])
@@ -708,6 +828,89 @@ const loadProgress = async () => {
   }
 }
 
+// 检查是否有必要训练
+const checkTrainingNecessity = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/model-versions/stats`)
+    const data = await res.json()
+    trainCheck.value = {
+      data_unchanged: data.training_count > 0,
+      last_trained: data.last_trained
+    }
+  } catch (e) {
+    console.error('检查训练必要性失败', e)
+  }
+}
+
+// 打开训练对话框
+const openTrainDialog = async () => {
+  await checkTrainingNecessity()
+  showTrainDialog.value = true
+}
+
+// 确认训练
+const confirmTraining = async () => {
+  showTrainDialog.value = false
+  await startTraining()
+}
+
+// 打开版本选择对话框
+const openVersionDialog = async () => {
+  await loadModelVersions()
+  selectedVersion.value = modelStats.value.current_version
+  showVersionDialog.value = true
+}
+
+// 加载模型版本列表
+const loadModelVersions = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/model-versions/list`)
+    const data = await res.json()
+    modelVersions.value = data.versions || []
+    modelStats.value = {
+      training_count: data.training_count || 0,
+      current_version: data.current_version
+    }
+  } catch (e) {
+    console.error('加载版本列表失败', e)
+  }
+}
+
+// 确认加载版本
+const confirmLoadVersion = async () => {
+  if (!selectedVersion.value) {
+    showToast('请选择一个版本', 'warning')
+    return
+  }
+  
+  showVersionDialog.value = false
+  
+  try {
+    const res = await fetch(`${API_BASE}/model-versions/load/${selectedVersion.value}`, {
+      method: 'POST'
+    })
+    const data = await res.json()
+    
+    if (data.success) {
+      showToast(data.message || `已加载模型版本 ${selectedVersion.value}`, 'success')
+      await loadModelsStatus()
+      await loadTrainingHistory()
+    } else {
+      showToast(data.message || '加载失败', 'error')
+    }
+  } catch (e) {
+    console.error('加载模型版本失败', e)
+    showToast('加载失败', 'error')
+  }
+}
+
+// 格式化日期
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`
+}
+
 // 开始训练
 const startTraining = async () => {
   if (isTraining.value) {
@@ -784,6 +987,7 @@ onMounted(async () => {
   await loadModelsStatus()
   await loadTrainingHistory()
   await loadLearningStats()
+  await loadModelVersions()
   
   // 如果正在训练，开始轮询
   const statusRes = await fetch(`${API_BASE}/training/status`)
@@ -1999,5 +2203,280 @@ h3 {
   .metric-bar {
     display: none;
   }
+}
+
+/* 训练确认对话框 */
+.confirm-dialog {
+  background: white;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.dialog-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dialog-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.dialog-body {
+  padding: 24px;
+}
+
+.train-warning {
+  background: #fff3e0;
+  border: 1px solid #ff9800;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.warning-icon {
+  font-size: 1.5rem;
+}
+
+.warning-text {
+  color: #e65100;
+  font-size: 0.95rem;
+}
+
+.train-reason {
+  margin-bottom: 20px;
+}
+
+.reason-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.reason-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reason-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reason-item:hover {
+  background: #f0f0f0;
+}
+
+.reason-item.active {
+  background: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.reason-item input[type="radio"] {
+  display: none;
+}
+
+.reason-icon {
+  font-size: 1.3rem;
+}
+
+.reason-text {
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.train-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.train-info .info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.train-info .info-label {
+  color: #666;
+}
+
+.train-info .info-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.dialog-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-cancel {
+  padding: 10px 24px;
+  background: #f0f0f0;
+  color: #666;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  background: #e0e0e0;
+}
+
+.btn-confirm {
+  padding: 10px 24px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-confirm:hover {
+  background: #43a047;
+}
+
+.btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 版本选择对话框 */
+.version-dialog {
+  max-width: 600px;
+}
+
+.version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.version-item {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.version-item:hover {
+  background: #f0f0f0;
+}
+
+.version-item.active {
+  background: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.version-item.current {
+  border-color: #2196f3;
+}
+
+.version-radio {
+  display: flex;
+  align-items: center;
+}
+
+.radio-dot {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ccc;
+  border-radius: 50%;
+  position: relative;
+}
+
+.radio-dot.checked {
+  border-color: #4caf50;
+}
+
+.radio-dot.checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background: #4caf50;
+  border-radius: 50%;
+}
+
+.version-info {
+  flex: 1;
+}
+
+.version-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.version-id {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.current-badge {
+  background: #2196f3;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.version-meta {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.meta-item {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.version-source {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.no-versions {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 0.95rem;
 }
 </style>
