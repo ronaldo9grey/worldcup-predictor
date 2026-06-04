@@ -240,3 +240,37 @@ async def startup_event():
     # 确保数据库表已创建
     from repositories.user_repo import UserRepository
     UserRepository(db.db_path)
+    
+    # 预计算小组出线概率（后台异步执行，不阻塞启动）
+    from api.group_simulation import precompute_all_qualifications
+    import asyncio
+    asyncio.create_task(precompute_all_qualifications())
+    
+    # 自动训练模型（后台异步执行）
+    asyncio.create_task(train_models_async())
+
+
+async def train_models_async():
+    """后台自动训练模型"""
+    import time
+    import asyncio
+    
+    await asyncio.sleep(5)  # 等待服务启动完成
+    
+    try:
+        ensemble = get_ensemble()
+        print(f"🤖 检查模型状态: nn_trained={ensemble.nn_trained}, rf_trained={ensemble.rf_trained}")
+        
+        # 始终调用初始化（会从缓存加载或重新训练）
+        print("🤖 开始初始化模型...")
+        start_time = time.time()
+        status = ensemble.initialize_models(force_retrain=False)
+        elapsed = time.time() - start_time
+        print(f"✨ 模型初始化完成，耗时 {elapsed:.2f} 秒")
+        print(f"   神经网络: {status.get('neural_network', 'unknown')}")
+        print(f"   随机森林: {status.get('random_forest', 'unknown')}")
+        print(f"   最终状态: nn_trained={ensemble.nn_trained}, rf_trained={ensemble.rf_trained}")
+    except Exception as e:
+        import traceback
+        print(f"❌ 模型初始化失败: {e}")
+        traceback.print_exc()

@@ -129,13 +129,12 @@ class MatchPredictorNN:
         }
     
     def _extract_features(self, features: Dict[str, float]) -> np.ndarray:
-        """提取特征向量"""
-        # 标准化特征顺序（13维）
+        """提取特征向量（统一为11维）"""
+        # 与训练数据保持一致的11个特征
         feature_names = [
             'elo_diff', 'rank_diff', 'form_diff', 'stage_factor',
             'home_advantage', 'continent_factor', 'h2h', 'wc_experience',
-            'squad_strength', 'coach_rating', 'venue_factor',
-            'elo_form_combined', 'rank_stage_combined'
+            'squad_strength', 'coach_rating', 'venue_factor'
         ]
         
         vector = np.zeros(len(feature_names))
@@ -269,6 +268,6 @@ class MatchPredictorNN:
             self.weights = {k: data[k] for k in data.files}
 
 
-def create_nn_model() -> MatchPredictorNN:
+def create_nn_model(input_size: int = 11) -> MatchPredictorNN:
     """创建神经网络模型实例"""
-    return MatchPredictorNN()
+    return MatchPredictorNN(input_size=input_size)

@@ -90,7 +90,7 @@ class ModelEnsemble:
     
     def initialize_models(self, force_retrain: bool = False) -> Dict:
         """
-        初始化所有模型
+        初始化所有模型（简化版，不持久化）
         
         Returns:
             初始化状态
@@ -101,21 +101,35 @@ class ModelEnsemble:
             'random_forest': 'not_trained'
         }
         
-        # 准备训练数据
+        # 如果已经训练过且模型实例存在且不强制重新训练，直接返回
+        if self.nn_trained and self.rf_trained and self.nn_model and self.rf_model and not force_retrain:
+            status['neural_network'] = 'already_trained'
+            status['random_forest'] = 'already_trained'
+            return status
+        
+        # 如果只是标志位为True但模型实例不存在，重置标志位
+        if not self.nn_model:
+            self.nn_trained = False
+        if not self.rf_model:
+            self.rf_trained = False
+        
         historical_matches = get_all_world_cup_matches()
         if len(historical_matches) == 0:
             return {'error': '无历史数据'}
         
         X, y = self._prepare_training_data(historical_matches)
+        input_size = X.shape[1]
         
         # 训练神经网络
         try:
-            self.nn_model = create_nn_model()
+            self.nn_model = create_nn_model(input_size=input_size)
             self.nn_model.train(X, y, epochs=100, batch_size=16, validation_split=0.2)
             self.nn_trained = True
             status['neural_network'] = 'trained'
         except Exception as e:
             status['neural_network'] = f'error: {str(e)}'
+            import traceback
+            traceback.print_exc()
         
         # 训练随机森林
         try:
@@ -126,6 +140,8 @@ class ModelEnsemble:
             status['rf_feature_importance'] = train_result.get('feature_importance', {})
         except Exception as e:
             status['random_forest'] = f'error: {str(e)}'
+            import traceback
+            traceback.print_exc()
         
         return status
     
@@ -200,12 +216,22 @@ class ModelEnsemble:
         # 2. 神经网络预测
         nn_result = None
         if self.nn_trained and self.nn_model:
-            nn_result = self._predict_nn(features)
+            try:
+                nn_result = self._predict_nn(features)
+            except Exception as e:
+                print(f"⚠️ 神经网络预测失败: {e}")
+        else:
+            print(f"⚠️ 神经网络未就绪: trained={self.nn_trained}, model={self.nn_model is not None}")
         
         # 3. 随机森林预测
         rf_result = None
         if self.rf_trained and self.rf_model:
-            rf_result = self._predict_rf(features)
+            try:
+                rf_result = self._predict_rf(features)
+            except Exception as e:
+                print(f"⚠️ 随机森林预测失败: {e}")
+        else:
+            print(f"⚠️ 随机森林未就绪: trained={self.rf_trained}, model={self.rf_model is not None}")
         
         # 4. 集成融合
         ensemble_probs = self._ensemble_predictions(
