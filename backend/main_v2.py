@@ -69,122 +69,15 @@ async def root():
 }
 
 
-@app.get("/api/groups")
-async def get_groups():
-    return {"groups": [{"group": gname, "teams": teams} for gname, teams in GROUPS.items()]}
+# 删除旧的路由定义，使用 groups.py 的路由
 
 
-@app.get("/api/groups/{group_name}")
-async def get_group_detail(group_name: str):
-    """获取小组详情（积分榜 + 比赛预测）"""
-    teams = GROUPS_FULL.get(group_name.upper())
-    if not teams:
-        return {"error": f"小组不存在"}
-    
-    # 使用ensemble进行预测（确保与其他API一致）
-    ensemble = get_ensemble()
-    pairs = [(0,1), (0,2), (0,3), (1,2), (1,3), (2,3)]
-    
-    # 初始化积分榜
-    standings_dict = {t["code"]: {"team": t, "points": 0, "gf": 0, "ga": 0, "w": 0, "d": 0, "l": 0} 
-                      for t in teams}
-    
-    # 生成比赛预测并计算积分
-    matches = []
-    for i, (h_idx, a_idx) in enumerate(pairs):
-        home_team = teams[h_idx]
-        away_team = teams[a_idx]
-        pred = ensemble.predict_match(home_team, away_team, "GROUP")
-        bayesian = pred.bayesian_pred
-        
-        # 预测结果
-        home_win_prob = bayesian.home_win_prob
-        draw_prob = bayesian.draw_prob
-        away_win_prob = bayesian.away_win_prob
-        
-        prediction = "主胜" if home_win_prob > draw_prob and home_win_prob > away_win_prob else "平局" if draw_prob > home_win_prob and draw_prob > away_win_prob else "客胜"
-        
-        matches.append({
-            "home": home_team["code"], "home_name_cn": home_team.get("name_cn", ""),
-            "away": away_team["code"], "away_name_cn": away_team.get("name_cn", ""),
-            "home_win_prob": home_win_prob,
-            "draw_prob": draw_prob,
-            "away_win_prob": away_win_prob,
-            "prediction": prediction,
-            "confidence": "高" if bayesian.confidence > 0.5 else "中" if bayesian.confidence > 0.35 else "低",
-        })
-        
-        # 基于预测结果计算积分（最大概率对应的实际积分）
-        hc, ac = home_team["code"], away_team["code"]
-        
-        # 根据最大概率决定比赛结果
-        if home_win_prob > draw_prob and home_win_prob > away_win_prob:
-            # 预测主胜
-            standings_dict[hc]["points"] += 3
-            standings_dict[hc]["w"] += 1
-            standings_dict[ac]["l"] += 1
-        elif draw_prob > home_win_prob and draw_prob > away_win_prob:
-            # 预测平局
-            standings_dict[hc]["points"] += 1
-            standings_dict[ac]["points"] += 1
-            standings_dict[hc]["d"] += 1
-            standings_dict[ac]["d"] += 1
-        else:
-            # 预测客胜
-            standings_dict[ac]["points"] += 3
-            standings_dict[hc]["l"] += 1
-            standings_dict[ac]["w"] += 1
-    
-    # 排名（按期望积分降序）
-    ranked = sorted(standings_dict.values(), 
-                   key=lambda x: x["points"], reverse=True)
-    
-    # 构建积分榜
-    standings = []
-    for i, s in enumerate(ranked):
-        team = s["team"]
-        standings.append({
-            "position": i+1, "code": team["code"], "name": team.get("name", ""),
-            "name_cn": team.get("name_cn", ""), "rank": team.get("rank", 50),
-            "points": int(s["points"]), 
-            "w": int(s["w"]), "d": int(s["d"]), "l": int(s["l"]),
-            "gf": round(s.get("gf", 0), 1), "ga": round(s.get("ga", 0), 1), "gd": round(s.get("gf", 0) - s.get("ga", 0), 1),
-        })
-    
-    return {
-        "group": group_name.upper(),
-        "standings": standings,
-        "matches": matches,
-    }
+# 删除旧的 get_group_detail，由 groups.py 提供
 
 
-@app.get("/api/groups/{group_name}/match/{match_idx}")
-async def get_match_detail(group_name: str, match_idx: int):
-    teams = GROUPS_FULL.get(group_name.upper())
-    if not teams or match_idx < 0 or match_idx >= 6:
-        return {"error": "无效请求"}
-    
-    pairs = [(0,1), (0,2), (0,3), (1,2), (1,3), (2,3)]
-    home, away = teams[pairs[match_idx][0]], teams[pairs[match_idx][1]]
-    
-    # 使用ensemble进行预测
-    ensemble = get_ensemble()
-    pred = ensemble.predict_match(home, away, stage="GROUP")
+# 删除旧的 get_match_detail，由 groups.py 提供
     bayesian = pred.bayesian_pred
-    
-    return {
-        "match": {"home": home, "away": away},
-        "prediction": {"home_win_prob": pred.home_win_prob, "draw_prob": pred.draw_prob, "away_win_prob": pred.away_win_prob},
-        "factors": [{
-            "key": f.key, "name": f.name, "icon": f.icon, "color": f.color,
-            "desc": f.desc, "weight": f.weight, "contribution": f.contribution, "weighted_contribution": f.contribution * f.weight,
-        } for f in pred.factors],
-        "upset": {
-            "is_upset": pred.is_upset,
-            "score": pred.upset_score,
-            "factors": pred.upset_factors,
-        },
-    }
+# get_match_detail 函数已删除，由 groups.py 提供
 
 
 @app.get("/api/simulate")

@@ -1,14 +1,20 @@
 """
-小组赛API路由 - 改造版
-接入 WorldCup26.ir 实时数据，展示预测 vs 实际积分对比
+小组赛API路由 - 独立版（不依赖 prediction_engine_v3）
+直接使用 ensemble 进行预测，包含三模型对比数据
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from typing import Dict, Any, List
+
 import asyncio
+import logging
+
+from services.data_service import get_data_service
+from services.ensemble_instance import get_ensemble
+from data.world_cup_2026 import get_groups as get_groups_dict
 
 from services.prediction_engine_v3 import create_prediction_engine, PredictionEngineV3
-from services.data_service import get_data_service
-from data.world_cup_2026 import get_groups as get_groups_dict
+
+logger = logging.getLogger(__name__)
 
 # 使用兼容的GROUPS（用于预测引擎）
 GROUPS = get_groups_dict()
@@ -54,93 +60,54 @@ async def get_groups() -> Dict[str, Any]:
 
 
 @router.get("/{group_name}")
-async def get_group_detail(
-    group_name: str,
-    engine: PredictionEngineV3 = Depends(get_engine)
-) -> Dict[str, Any]:
+async def get_group_detail(group_name: str) -> Dict[str, Any]:
     """
     获取小组详情（积分榜 + 比赛预测 + 实际积分）
     
-    展示：
-    - 预测积分榜（基于概率的期望值）
+    包含：
+    - 预测积分榜（期望值）
     - 实际积分榜（已揭晓的比赛）
-    - 对比差异
+    - 三模型对比
+    - 贝叶斯因子
     """
     group_name = group_name.upper()
+    logger.info(f"🔍 请求小组: {group_name}")
     
     ds = get_data_service()
+    ensemble = get_ensemble()
     
     # 获取球队数据
     teams = await ds.get_group_teams(group_name)
+    logger.info(f"🔍 球队数: {len(teams)}")
     if not teams:
         return {"error": f"小组不存在: {group_name}"}
     
-    # 获取实际积分榜（WorldCup26.ir）
+    # 获取实际积分榜
     actual_standings = await ds.get_standings(group_name)
+    logger.info(f"🔍 积分榜: {len(actual_standings)}")
     
-    # 获取比赛数据（WorldCup26.ir）
+    # 获取比赛数据
     matches_data = await ds.get_matches(group=group_name)
+    logger.info(f"🔍 比赛数: {len(matches_data)}")
     
-    # 生成预测积分榜（期望值）
-    predicted_standings = calculate_expected_standings(teams, matches_data, engine)
+    # 构建积分榜（预测期望值 + 实际积分）
+    standings = build_standings(teams, matches_data, ensemble, actual_standings)
     
-    # 合并预测和实际数据
-    combined_standings = combine_standings(predicted_standings, actual_standings, teams)
-    
-    # 构建比赛列表（含预测 + 实际结果）
-    matches_with_result = []
-    for m in matches_data:
-        # m 是字典格式
-        home_code = m.get("home_code") or m.get("home")
-        away_code = m.get("away_code") or m.get("away")
-        
-        home_team = next((t for t in teams if t["code"] == home_code), None)
-        away_team = next((t for t in teams if t["code"] == away_code), None)
-        
-        if home_team and away_team:
-            # 预测
-            pred = engine.predict_match(home_team, away_team, stage="GROUP", is_neutral=True)
-            
-            matches_with_result.append({
-                "idx": m.get("match_index"),
-                "home": home_team["code"],
-                "home_name_cn": home_team.get("name_cn", home_team["name"]),
-                "away": away_team["code"],
-                "away_name_cn": away_team.get("name_cn", away_team["name"]),
-                # 预测数据
-                "home_win_prob": pred.home_win_prob,
-                "draw_prob": pred.draw_prob,
-                "away_win_prob": pred.away_win_prob,
-                "prediction": pred.prediction,
-                "confidence": pred.confidence,
-                # 实际数据
-                "home_score": m.get("home_score"),
-                "away_score": m.get("away_score"),
-                "status": m.get("status"),  # scheduled, live, finished
-                "scheduled_time": m.get("scheduled_time"),
-                # 结果说明
-                "result_text": get_result_text(m, pred)
-            })
+    # 构建比赛列表（包含三模型对比）
+    matches = build_matches(teams, matches_data, ensemble)
+    logger.info(f"🔍 构建完成: standings={len(standings)}, matches={len(matches)}")
     
     return {
         "group": group_name,
-        "standings": combined_standings,
-        "matches": matches_with_result,
+        "standings": standings,
+        "matches": matches,
         "data_source": ds.source_name,
         "is_realtime": ds.is_realtime
     }
 
 
-def calculate_expected_standings(
-    teams: List[Dict],
-    matches_data: List[Any],
-    engine: PredictionEngineV3
-) -> List[Dict]:
-    """
-    计算预测积分榜（期望值）
-    
-    期望积分 = 主胜概率 × 3 + 平局概率 × 1
-    """
+def build_standings(teams: List, matches: List, ensemble, actual_standings: List) -> List[Dict]:
+    """构建积分榜（预测期望值 + 实际积分）"""
     # 初始化积分
     table = {t["code"]: {
         "team": t,
@@ -150,167 +117,161 @@ def calculate_expected_standings(
         "expected_l": 0.0
     } for t in teams}
     
-    # 对每场比赛计算期望积分
+    # 计算期望积分
     pairs = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
-    
-    for idx, (i, j) in enumerate(pairs):
+    for i, j in pairs:
         if i >= len(teams) or j >= len(teams):
             continue
-        
         home, away = teams[i], teams[j]
-        pred = engine.predict_match(home, away, stage="GROUP", is_neutral=True)
-        
-        home_code = home["code"]
-        away_code = away["code"]
-        
-        # 期望积分 = P(主胜) × 3 + P(平) × 1
-        table[home_code]["expected_points"] += pred.home_win_prob * 3 + pred.draw_prob * 1
-        table[away_code]["expected_points"] += pred.away_win_prob * 3 + pred.draw_prob * 1
-        
-        # 期望胜/平/负场数
-        table[home_code]["expected_w"] += pred.home_win_prob
-        table[home_code]["expected_d"] += pred.draw_prob
-        table[home_code]["expected_l"] += pred.away_win_prob
-        
-        table[away_code]["expected_w"] += pred.away_win_prob
-        table[away_code]["expected_d"] += pred.draw_prob
-        table[away_code]["expected_l"] += pred.home_win_prob
+        try:
+            pred = ensemble.predict_match(home, away, "GROUP")
+            bayesian = pred.bayesian_pred
+            
+            home_code = home["code"]
+            away_code = away["code"]
+            
+            # 期望积分
+            table[home_code]["expected_points"] += bayesian.home_win_prob * 3 + bayesian.draw_prob * 1
+            table[away_code]["expected_points"] += bayesian.away_win_prob * 3 + bayesian.draw_prob * 1
+            
+            table[home_code]["expected_w"] += bayesian.home_win_prob
+            table[home_code]["expected_d"] += bayesian.draw_prob
+            table[home_code]["expected_l"] += bayesian.away_win_prob
+            
+            table[away_code]["expected_w"] += bayesian.away_win_prob
+            table[away_code]["expected_d"] += bayesian.draw_prob
+            table[away_code]["expected_l"] += bayesian.home_win_prob
+        except Exception as e:
+            logger.warning(f"预测失败: {e}")
     
     # 排序
-    sorted_table = sorted(
-        table.values(),
-        key=lambda x: x["expected_points"],
-        reverse=True
-    )
+    sorted_table = sorted(table.values(), key=lambda x: x["expected_points"], reverse=True)
     
-    return [
-        {
+    # 合并实际积分
+    actual_map = {s["code"]: s for s in actual_standings}
+    
+    result = []
+    for i, s in enumerate(sorted_table):
+        team = s["team"]
+        code = team["code"]
+        act = actual_map.get(code, {})
+        
+        result.append({
             "position": i + 1,
-            "code": s["team"]["code"],
-            "name": s["team"]["name"],
-            "name_cn": s["team"].get("name_cn", s["team"]["name"]),
-            "rank": s["team"].get("rank", 99),
+            "code": code,
+            "name": team.get("name"),
+            "name_cn": team.get("name_cn"),
+            "rank": team.get("rank", 99),
+            # 预测
             "expected_points": round(s["expected_points"], 1),
             "expected_w": round(s["expected_w"], 1),
             "expected_d": round(s["expected_d"], 1),
-            "expected_l": round(s["expected_l"], 1)
-        }
-        for i, s in enumerate(sorted_table)
-    ]
-
-
-def combine_standings(
-    predicted: List[Dict],
-    actual: List[Dict],
-    teams: List[Dict]
-) -> List[Dict]:
-    """
-    合并预测积分和实际积分
-    """
-    # 构建映射
-    predicted_map = {s["code"]: s for s in predicted}
-    actual_map = {s["code"]: s for s in actual}
-    
-    combined = []
-    
-    for team in teams:
-        code = team["code"]
-        pred = predicted_map.get(code, {})
-        act = actual_map.get(code, {})
-        
-        # 实际积分（如果有的话）
-        actual_points = act.get("points", 0)
-        actual_w = act.get("w", 0)
-        actual_d = act.get("d", 0)
-        actual_l = act.get("l", 0)
-        actual_gf = act.get("gf", 0)
-        actual_ga = act.get("ga", 0)
-        actual_gd = act.get("gd", 0)
-        
-        # 预测积分
-        expected_points = pred.get("expected_points", 0)
-        expected_w = pred.get("expected_w", 0)
-        expected_d = pred.get("expected_d", 0)
-        expected_l = pred.get("expected_l", 0)
-        
-        # 计算差异
-        diff = actual_points - expected_points
-        
-        combined.append({
-            "position": pred.get("position", 0),
-            "code": code,
-            "name": team.get("name", code),
-            "name_cn": team.get("name_cn", code),
-            "rank": team.get("rank", 99),
-            
-            # 预测数据
-            "expected_points": expected_points,
-            "expected_w": expected_w,
-            "expected_d": expected_d,
-            "expected_l": expected_l,
-            
-            # 实际数据
-            "actual_points": actual_points,
-            "actual_w": actual_w,
-            "actual_d": actual_d,
-            "actual_l": actual_l,
-            "actual_gf": actual_gf,
-            "actual_ga": actual_ga,
-            "actual_gd": actual_gd,
-            
+            "expected_l": round(s["expected_l"], 1),
+            # 实际
+            "actual_points": act.get("points", 0),
+            "actual_w": act.get("w", 0),
+            "actual_d": act.get("d", 0),
+            "actual_l": act.get("l", 0),
+            "actual_gf": act.get("gf", 0),
+            "actual_ga": act.get("ga", 0),
+            "actual_gd": act.get("gd", 0),
             # 差异
-            "diff": round(diff, 1),
-            "diff_text": get_diff_text(diff, actual_points)
+            "diff": round(act.get("points", 0) - s["expected_points"], 1),
+            "diff_text": "待比赛" if act.get("points", 0) == 0 else "符合预期"
         })
     
-    # 按实际积分排序（如果没有，按预测积分）
-    combined.sort(key=lambda x: (
-        -x.get("actual_points", 0),  # 实际积分降序
-        -x.get("actual_gd", 0),      # 净胜球
-        -x.get("actual_gf", 0),      # 进球数
-        -x.get("expected_points", 0)  # 预测积分
-    ))
+    return result
+
+
+def build_matches(teams: List, matches_data: List, ensemble) -> List[Dict]:
+    """构建比赛列表（包含三模型对比）"""
+    result = []
     
-    # 更新排名
-    for i, s in enumerate(combined):
-        s["position"] = i + 1
+    for m in matches_data:
+        home_code = m.get("home") or m.get("home_code")
+        away_code = m.get("away") or m.get("away_code")
+        
+        home_team = next((t for t in teams if t["code"] == home_code), None)
+        away_team = next((t for t in teams if t["code"] == away_code), None)
+        
+        if not home_team or not away_team:
+            logger.warning(f"找不到球队: {home_code} vs {away_code}")
+            continue
+        
+        try:
+            pred = ensemble.predict_match(home_team, away_team, "GROUP")
+            bayesian = pred.bayesian_pred
+            nn_pred = pred.nn_pred
+            rf_pred = pred.rf_pred
+            
+            # 构建三模型对比
+            models_comparison = {
+                "bayesian": {
+                    "home_win": round(bayesian.home_win_prob, 3) if bayesian else 0,
+                    "draw": round(bayesian.draw_prob, 3) if bayesian else 0,
+                    "away_win": round(bayesian.away_win_prob, 3) if bayesian else 0,
+                    "result": "主胜" if bayesian and bayesian.home_win_prob > 0.5 else "平局" if bayesian and bayesian.draw_prob > 0.3 else "客胜"
+                },
+                "neural_network": {
+                    "home_win": round(nn_pred.home_win_prob, 3) if nn_pred else 0.33,
+                    "draw": round(nn_pred.draw_prob, 3) if nn_pred else 0.34,
+                    "away_win": round(nn_pred.away_win_prob, 3) if nn_pred else 0.33,
+                    "result": "主胜" if nn_pred and nn_pred.home_win_prob > 0.4 else "-"
+                },
+                "random_forest": {
+                    "home_win": round(rf_pred.home_win_prob, 3) if rf_pred else 0.33,
+                    "draw": round(rf_pred.draw_prob, 3) if rf_pred else 0.34,
+                    "away_win": round(rf_pred.away_win_prob, 3) if rf_pred else 0.33,
+                    "result": "主胜" if rf_pred and rf_pred.home_win_prob > 0.45 else "-"
+                },
+                "ensemble": {
+                    "home_win": round(pred.ensemble_home_prob, 3),
+                    "draw": round(pred.ensemble_draw_prob, 3),
+                    "away_win": round(pred.ensemble_away_prob, 3),
+                    "result": pred.ensemble_prediction
+                }
+            }
+            
+            # 贝叶斯因子
+            bayesian_factors = {
+                "elo_diff": home_team.get("elo", 1500) - away_team.get("elo", 1500),
+                "rank_gap": away_team.get("rank", 99) - home_team.get("rank", 99),
+                "confidence": round(bayesian.confidence, 2) if bayesian else 0
+            } if bayesian else None
+            
+            result.append({
+                "match_id": m.get("match_id"),
+                "idx": m.get("match_index"),
+                "home": home_code,
+                "home_name_cn": home_team.get("name_cn", home_team.get("name")),
+                "away": away_code,
+                "away_name_cn": away_team.get("name_cn", away_team.get("name")),
+                # 预测
+                "home_win_prob": round(pred.ensemble_home_prob, 3),
+                "draw_prob": round(pred.ensemble_draw_prob, 3),
+                "away_win_prob": round(pred.ensemble_away_prob, 3),
+                "prediction": pred.ensemble_prediction,
+                "confidence": "高" if pred.ensemble_home_prob > 0.6 else "中" if pred.ensemble_home_prob > 0.4 else "低",
+                # 实际
+                "home_score": m.get("home_score"),
+                "away_score": m.get("away_score"),
+                "status": m.get("status"),
+                "scheduled_time": m.get("scheduled_time"),
+                # 三模型对比
+                "models_comparison": models_comparison,
+                # 贝叶斯因子
+                "bayesian_factors": bayesian_factors,
+                # 结果说明
+                "result_text": f"预测: {pred.ensemble_prediction}"
+            })
+        except Exception as e:
+            logger.error(f"构建比赛数据失败: {e}")
+            result.append({
+                "match_id": m.get("match_id"),
+                "home": home_code,
+                "away": away_code,
+                "error": str(e)
+            })
     
-    return combined
-
-
-def get_diff_text(diff: float, actual_points: int) -> str:
-    """获取差异说明文本"""
-    if actual_points == 0:
-        return "待比赛"
-    elif diff > 0.5:
-        return f"超出预期 +{diff:.1f}"
-    elif diff < -0.5:
-        return f"低于预期 {diff:.1f}"
-    else:
-        return "符合预期"
-
-
-def get_result_text(match: Dict, pred) -> str:
-    """获取比赛结果说明"""
-    status = match.get("status", "scheduled")
-    home_score = match.get("home_score")
-    away_score = match.get("away_score")
-    
-    if status == "scheduled":
-        confidence = pred.confidence
-        if isinstance(confidence, str):
-            return f"预测: {pred.prediction} ({confidence})"
-        else:
-            return f"预测: {pred.prediction} ({confidence:.0%})"
-    elif status == "live":
-        return f"进行中: {home_score} - {away_score}"
-    else:  # finished
-        if home_score is not None and away_score is not None:
-            if home_score > away_score:
-                result = "主胜"
-            elif home_score < away_score:
-                result = "客胜"
-            else:
-                result = "平局"
-            return f"已揭晓: {home_score}-{away_score} ({result})"
-        return "已结束"
+    logger.info(f"✅ 构建完成: {len(result)} 场比赛")
+    return result
