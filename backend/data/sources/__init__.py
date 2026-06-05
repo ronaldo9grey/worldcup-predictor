@@ -7,6 +7,7 @@ from .base import (
 )
 from .mock_source import MockDataSource
 from .balldontlie_source import BALLDONTLIEDataSource
+from .worldcup26_source import WorldCup26Source
 from .factory import create_data_source, get_available_sources
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     # 数据源
     "MockDataSource",
     "BALLDONTLIEDataSource",
+    "WorldCup26Source",
     # 工厂
     "create_data_source",
     "get_available_sources",
