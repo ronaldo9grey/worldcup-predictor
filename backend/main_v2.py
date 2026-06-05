@@ -13,6 +13,7 @@ from data.world_cup_2026 import GROUPS, get_all_teams, get_team_lookup, get_grou
 from api.user import router as user_router
 from api.accuracy import router as accuracy_router
 from api.group_simulation import router as group_simulation_router
+from api.groups import router as groups_router
 from api.auto_verify import router as auto_verify_router
 from api.training import router as training_router
 from api.calculation import router as calculation_router
@@ -35,6 +36,7 @@ app = FastAPI(title="世界杯预测系统 v2.3", version="2.3.0")
 app.include_router(user_router)
 app.include_router(accuracy_router)
 app.include_router(group_simulation_router)
+app.include_router(groups_router)  # 小组赛详情
 app.include_router(auto_verify_router)
 app.include_router(training_router)
 app.include_router(calculation_router)
