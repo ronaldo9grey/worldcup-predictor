@@ -186,6 +186,10 @@ class WorldCup26Source(BaseDataSource):
             try:
                 data = await self._request("games")
                 
+                # 先获取球队列表，建立 name -> code 映射
+                teams = await self.get_teams()
+                name_to_code = {t.name: t.code for t in teams}
+                
                 for match_data in data.get("games", []):
                     match_id = match_data.get("id", "")
                     
@@ -200,10 +204,16 @@ class WorldCup26Source(BaseDataSource):
                     else:
                         match_status = "live"
                     
+                    # 将 team_id 转换为 code
+                    home_name = match_data.get("home_team_name_en", "")
+                    away_name = match_data.get("away_team_name_en", "")
+                    home_code = name_to_code.get(home_name, match_data.get("home_team_id", ""))
+                    away_code = name_to_code.get(away_name, match_data.get("away_team_id", ""))
+                    
                     match = MatchData(
                         match_id=match_id,
-                        home_code=match_data.get("home_team_id", ""),
-                        away_code=match_data.get("away_team_id", ""),
+                        home_code=home_code,
+                        away_code=away_code,
                         home_name=match_data.get("home_team_name_en", ""),
                         away_name=match_data.get("away_team_name_en", ""),
                         group=match_data.get("group"),
