@@ -744,12 +744,17 @@ const loadModelsStatus = async () => {
     }
     
     // 加载学习数据
-    const learningRes = await fetch(`${API_BASE}/models/learning/status`)
+    const learningRes = await fetch(`${API_BASE}/learning/stats`)
     if (learningRes.ok) {
       const learningData = await learningRes.json()
       learningStats.value = learningData
-      learningHistory.value = learningData.history || []
-      driftWarning.value = learningData.drift_detected || false
+      // 加载学习历史
+      const historyRes = await fetch(`${API_BASE}/learning/history?limit=10`)
+      if (historyRes.ok) {
+        const historyData = await historyRes.json()
+        learningHistory.value = historyData.events || []
+      }
+      driftWarning.value = learningData.recent_accuracy < (learningData.baseline_accuracy || 0.53) - 0.1
     }
   } catch (e) {
     console.error('加载模型状态失败', e)
@@ -760,7 +765,7 @@ const resetLearning = async () => {
   if (!confirm('确定要重置学习数据吗？所有学习历史将被清除。')) return
   
   try {
-    await fetch(`${API_BASE}/models/learning/reset`, { method: 'POST' })
+    await fetch(`${API_BASE}/learning/reset`, { method: 'POST' })
     learningStats.value = {}
     learningHistory.value = []
     driftWarning.value = false
@@ -864,12 +869,27 @@ const openVersionDialog = async () => {
 // 加载模型版本列表
 const loadModelVersions = async () => {
   try {
+    // 加载版本列表
     const res = await fetch(`${API_BASE}/model-versions/list`)
     const data = await res.json()
     modelVersions.value = data.versions || []
-    modelStats.value = {
-      training_count: data.training_count || 0,
-      current_version: data.current_version
+    
+    // 加载统计数据（包含准确率）
+    const statsRes = await fetch(`${API_BASE}/model-versions/stats`)
+    if (statsRes.ok) {
+      const statsData = await statsRes.json()
+      modelStats.value = {
+        training_count: statsData.training_count || 0,
+        current_version: statsData.current_version,
+        best_nn_accuracy: statsData.best_nn_accuracy || 0,
+        best_rf_accuracy: statsData.best_rf_accuracy || 0,
+        best_version: statsData.best_version
+      }
+    } else {
+      modelStats.value = {
+        training_count: data.training_count || 0,
+        current_version: data.current_version
+      }
     }
   } catch (e) {
     console.error('加载版本列表失败', e)

@@ -24,6 +24,7 @@ from api.leaderboard import router as leaderboard_router
 from api.share import router as share_router
 from api.bayesian import router as bayesian_router
 from api.model_versions import router as model_versions_router
+from api.data_service_api import router as data_service_router
 
 # 使用完整的队伍信息（包含所有字段）
 GROUPS_FULL = get_groups_dict()
@@ -45,6 +46,7 @@ app.include_router(leaderboard_router)
 app.include_router(share_router)
 app.include_router(bayesian_router)  # 贝叶斯可视化扩展
 app.include_router(model_versions_router)  # 模型版本管理
+app.include_router(data_service_router)  # 数据服务API
 
 # 静态文件服务（前端）
 frontend_dist = "/var/www/worldcup-predictor/frontend/dist"
