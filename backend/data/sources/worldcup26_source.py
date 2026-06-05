@@ -49,7 +49,8 @@ class WorldCup26Source(BaseDataSource):
             
             supplement = {}
             for team in ALL_TEAMS:
-                supplement[team["code"]] = {
+                code = team["code"]
+                supplement[code] = {
                     "rank": team.get("rank", 99),
                     "elo": team.get("elo", 1500),
                     "name_cn": team.get("name_cn", team["name"]),
@@ -57,6 +58,17 @@ class WorldCup26Source(BaseDataSource):
                     "wc_titles": team.get("wc_titles", 0),
                     "continent": team.get("continent", "")
                 }
+            
+            # 添加代码映射（WorldCup26.ir 代码 → 本地代码）
+            code_mappings = {
+                "RSA": "ZAF",  # South Africa
+                "KSA": "SAU",  # Saudi Arabia
+            }
+            
+            for wc_code, local_code in code_mappings.items():
+                if local_code in supplement:
+                    supplement[wc_code] = supplement[local_code].copy()
+            
             return supplement
         except Exception as e:
             logger.warning(f"加载补充数据失败: {e}")
@@ -148,40 +160,18 @@ class WorldCup26Source(BaseDataSource):
         if self._is_cache_valid(cache_key):
             return self._groups_cache.copy()
         
-        try:
-            data = await self._request("groups")
-            
-            for group_data in data.get("groups", []):
-                group_name = group_data.get("name", "")
-                team_ids = [t.get("team_id") for t in group_data.get("teams", [])]
-                
-                # 需要从 teams 缓存中查找对应的 code
-                teams = await self.get_teams()
-                team_codes = []
-                for team_id in team_ids:
-                    # 根据 team_id 查找 code（需要建立映射）
-                    for t in teams:
-                        if str(t.code) == str(team_id) or str(t.rank) == str(team_id):
-                            team_codes.append(t.code)
-                            break
-                
-                self._groups_cache[group_name] = team_codes
-            
-            self._cache_time[cache_key] = datetime.now()
-            return self._groups_cache.copy()
-            
-        except DataSourceError:
-            if self._groups_cache:
-                return self._groups_cache.copy()
-            # 如果请求失败，从 teams 缓存构建
-            teams = await self.get_teams()
-            groups: Dict[str, List[str]] = {}
-            for team in teams:
-                if team.group:
-                    if team.group not in groups:
-                        groups[team.group] = []
-                    groups[team.group].append(team.code)
-            return groups
+        # 直接从 teams 缓存构建分组信息（更可靠）
+        teams = await self.get_teams()
+        groups: Dict[str, List[str]] = {}
+        for team in teams:
+            if team.group:
+                if team.group not in groups:
+                    groups[team.group] = []
+                groups[team.group].append(team.code)
+        
+        self._groups_cache = groups
+        self._cache_time[cache_key] = datetime.now()
+        return self._groups_cache.copy()
     
     async def get_matches(
         self, 
