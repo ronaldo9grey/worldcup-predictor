@@ -254,63 +254,97 @@ class WorldCup26Source(BaseDataSource):
         return self._matches_cache.get(match_id)
     
     async def get_standings(self, group: str) -> List[Dict]:
-        """获取小组积分榜"""
+        """获取小组积分榜 - 基于比赛结果本地计算（避免 /get/groups 端点的bug）"""
         cache_key = f"standings_{group}"
         
         if self._is_cache_valid(cache_key):
             return self._standings_cache.get(group, [])
         
         try:
-            data = await self._request("groups")
+            # 获取该小组的所有比赛（从 /get/games 获取，数据正确）
+            matches = await self.get_matches(group=group)
             
-            # 先获取球队列表，建立 id -> code 映射
-            teams = await self.get_teams()
+            # 获取小组球队列表
+            groups_data = await self.get_groups()
+            group_teams = groups_data.get(group.upper(), [])
             
-            # 从 games API 获取更准确的球队信息
-            games_data = await self._request("games")
-            team_id_to_code = {}
-            for game in games_data.get("games", []):
-                home_id = game.get("home_team_id")
-                away_id = game.get("away_team_id")
-                # 从 teams 缓存查找对应的 code
-                for t in teams:
-                    if t.name == game.get("home_team_name_en"):
-                        team_id_to_code[home_id] = t.code
-                    if t.name == game.get("away_team_name_en"):
-                        team_id_to_code[away_id] = t.code
+            # 初始化积分榜
+            standings_dict = {}
+            for team_code in group_teams:
+                team_info = self._teams_cache.get(team_code)
+                standings_dict[team_code] = {
+                    "code": team_code,
+                    "name": team_info.name if team_info else team_code,
+                    "name_cn": team_info.name_cn if team_info else team_code,
+                    "rank": team_info.rank if team_info else 99,
+                    "points": 0,
+                    "w": 0,
+                    "d": 0,
+                    "l": 0,
+                    "gf": 0,
+                    "ga": 0,
+                    "gd": 0
+                }
             
-            for group_data in data.get("groups", []):
-                group_name = group_data.get("name", "")
+            # 基于比赛结果计算积分榜
+            for match in matches:
+                if match.status != "finished":
+                    continue
                 
-                if group_name == group.upper():
-                    standings = []
-                    
-                    for team_standing in group_data.get("teams", []):
-                        team_id = team_standing.get("team_id")
-                        team_code = team_id_to_code.get(team_id, str(team_id))
-                        
-                        # 查找球队信息
-                        team_info = self._teams_cache.get(team_code)
-                        
-                        standings.append({
-                            "position": len(standings) + 1,
-                            "code": team_code,
-                            "name": team_info.name if team_info else str(team_id),
-                            "name_cn": team_info.name_cn if team_info else str(team_id),
-                            "rank": team_info.rank if team_info else 99,
-                            "points": int(team_standing.get("pts", 0)),
-                            "w": int(team_standing.get("w", 0)),
-                            "d": int(team_standing.get("d", 0)),
-                            "l": int(team_standing.get("l", 0)),
-                            "gf": int(team_standing.get("gf", 0)),
-                            "ga": int(team_standing.get("ga", 0)),
-                            "gd": int(team_standing.get("gd", 0))
-                        })
-                    
-                    self._standings_cache[group_name] = standings
-                    self._cache_time[f"standings_{group_name}"] = datetime.now()
+                home_code = match.home_code
+                away_code = match.away_code
+                home_score = match.home_score or 0
+                away_score = match.away_score or 0
+                
+                # 更新进球失球
+                if home_code in standings_dict:
+                    standings_dict[home_code]["gf"] += home_score
+                    standings_dict[home_code]["ga"] += away_score
+                
+                if away_code in standings_dict:
+                    standings_dict[away_code]["gf"] += away_score
+                    standings_dict[away_code]["ga"] += home_score
+                
+                # 更新积分和胜负
+                if home_score > away_score:
+                    # 主胜
+                    if home_code in standings_dict:
+                        standings_dict[home_code]["points"] += 3
+                        standings_dict[home_code]["w"] += 1
+                    if away_code in standings_dict:
+                        standings_dict[away_code]["l"] += 1
+                elif home_score < away_score:
+                    # 客胜
+                    if away_code in standings_dict:
+                        standings_dict[away_code]["points"] += 3
+                        standings_dict[away_code]["w"] += 1
+                    if home_code in standings_dict:
+                        standings_dict[home_code]["l"] += 1
+                else:
+                    # 平局
+                    if home_code in standings_dict:
+                        standings_dict[home_code]["points"] += 1
+                        standings_dict[home_code]["d"] += 1
+                    if away_code in standings_dict:
+                        standings_dict[away_code]["points"] += 1
+                        standings_dict[away_code]["d"] += 1
             
-            return self._standings_cache.get(group.upper(), [])
+            # 计算净胜球并排序
+            for team_data in standings_dict.values():
+                team_data["gd"] = team_data["gf"] - team_data["ga"]
+            
+            # 转为列表并排序（积分 > 净胜球 > 进球数）
+            standings = list(standings_dict.values())
+            standings.sort(key=lambda x: (-x["points"], -x["gd"], -x["gf"]))
+            
+            # 添加排名
+            for i, team in enumerate(standings, 1):
+                team["position"] = i
+            
+            self._standings_cache[group.upper()] = standings
+            self._cache_time[cache_key] = datetime.now()
+            
+            return standings
             
         except DataSourceError:
             return self._standings_cache.get(group.upper(), [])

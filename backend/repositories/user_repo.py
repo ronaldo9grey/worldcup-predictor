@@ -29,6 +29,7 @@ class UserRepository:
                 CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
                     nickname TEXT NOT NULL,
+                    device_key TEXT,
                     created_at TEXT NOT NULL,
                     last_login TEXT,
                     total_points INTEGER DEFAULT 0,
@@ -66,24 +67,56 @@ class UserRepository:
     
     # ========== 用户操作 ==========
     
-    def create_user(self, nickname: str) -> Dict[str, Any]:
-        """创建用户（如果昵称已存在则返回已有用户）"""
-        # 检查昵称是否已存在
+    def create_user(self, nickname: str, device_key: str = None) -> Dict[str, Any]:
+        """创建用户（如果昵称已存在则验证device_key）"""
+        # 昵称黑名单验证
+        forbidden_nicknames = ["王超", "万哥", "wange", "王 超", "万 哥"]
+        if nickname in forbidden_nicknames:
+            return {
+                "error": "该昵称已被保留，请换一个昵称",
+                "nickname_taken": True,
+                "forbidden": True
+            }
+        
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM users WHERE nickname = ?", (nickname,))
             existing = cursor.fetchone()
             
             if existing:
-                # 昵称已存在，返回已有用户
+                # 昵称已存在，验证device_key
                 user_id = existing["user_id"]
+                stored_device_key = existing["device_key"] if "device_key" in existing.keys() else None
+                
+                # 如果没有存储device_key，则更新
+                if not stored_device_key and device_key:
+                    cursor.execute("UPDATE users SET device_key = ? WHERE user_id = ?", (device_key, user_id))
+                    conn.commit()
+                    self.update_login(user_id)
+                    return {
+                        "user_id": user_id,
+                        "nickname": nickname,
+                        "created_at": existing["created_at"],
+                        "total_points": existing["total_points"],
+                        "is_existing": True
+                    }
+                
+                # 验证device_key
+                if stored_device_key and device_key and stored_device_key != device_key:
+                    # device_key不匹配，拒绝登录
+                    return {
+                        "error": "该昵称已被其他设备使用，请换一个昵称",
+                        "nickname_taken": True
+                    }
+                
+                # device_key匹配或未设置，允许登录
                 self.update_login(user_id)
                 return {
                     "user_id": user_id,
                     "nickname": nickname,
                     "created_at": existing["created_at"],
                     "total_points": existing["total_points"],
-                    "is_existing": True  # 标记这是已有用户
+                    "is_existing": True
                 }
         
         # 创建新用户
@@ -93,9 +126,9 @@ class UserRepository:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO users (user_id, nickname, created_at, last_login)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, nickname, now, now))
+                INSERT INTO users (user_id, nickname, device_key, created_at, last_login)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, nickname, device_key, now, now))
             conn.commit()
         
         return {
@@ -103,7 +136,7 @@ class UserRepository:
             "nickname": nickname,
             "created_at": now,
             "total_points": 0,
-            "is_existing": False  # 标记这是新用户
+            "is_existing": False
         }
     
     def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:

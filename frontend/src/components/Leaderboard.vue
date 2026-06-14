@@ -282,11 +282,11 @@ h3 {
 .stats-overview {
   display: flex;
   justify-content: space-around;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: white;
   padding: 20px;
   border-radius: 12px;
   margin-bottom: 20px;
+  border: 2px solid #1a472a;
 }
 
 .stat-item {
@@ -300,12 +300,15 @@ h3 {
 
 .stat-item .label {
   font-size: 12px;
-  opacity: 0.8;
+  color: #667eea;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 .stat-item .value {
   font-size: 20px;
   font-weight: bold;
+  color: #764ba2;
 }
 
 /* 排行榜列表 */
@@ -550,9 +553,18 @@ h3 {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
+  .leaderboard { padding: 16px; }
+  
+  h2 { font-size: 1.3rem; }
+  
+  .sort-tabs { gap: 8px; }
+  
+  .tab { padding: 8px 14px; font-size: 0.9rem; }
+  
   .stats-overview {
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 12px;
+    padding: 14px;
   }
   
   .stat-item {
@@ -560,32 +572,116 @@ h3 {
     min-width: 80px;
   }
   
+  .stat-item .icon { font-size: 1.3rem; }
+  
+  .stat-item .label { font-size: 0.8rem; }
+  
+  .stat-item .value { font-size: 1.1rem; }
+  
+  .user-item { padding: 12px; }
+  
+  .rank { font-size: 1.5rem; }
+  
+  .user-info { gap: 6px; }
+  
+  .nickname { font-size: 1rem; }
+  
   .user-data {
     flex-direction: column;
     gap: 5px;
+    padding: 10px;
   }
   
   .data-row {
     display: flex;
     justify-content: space-between;
+    font-size: 0.9rem;
   }
   
   .ranking-card {
     flex-direction: column;
     text-align: center;
+    padding: 16px;
+    gap: 12px;
   }
+  
+  .ranking-card h3 { font-size: 1.1rem; }
+  
+  .rank-badge { font-size: 3rem; }
   
   .my-stats {
     flex-wrap: wrap;
     justify-content: center;
+    gap: 12px;
   }
+  
+  .stat-box { padding: 10px 14px; }
+  
+  .stat-label { font-size: 0.8rem; }
+  
+  .stat-value { font-size: 1.2rem; }
   
   .pred-item {
     flex-wrap: wrap;
+    padding: 10px;
+    gap: 8px;
   }
   
   .pred-item .match {
     width: 100%;
+    font-size: 0.95rem;
   }
+  
+  .pred-item .info { font-size: 0.85rem; }
+}
+
+@media (max-width: 480px) {
+  .leaderboard { padding: 12px; }
+  
+  h2 { font-size: 1.2rem; }
+  
+  .sort-tabs { gap: 5px; }
+  
+  .tab { padding: 6px 12px; font-size: 0.85rem; }
+  
+  .stats-overview { padding: 12px; gap: 10px; }
+  
+  .stat-item { min-width: 70px; }
+  
+  .stat-item .icon { font-size: 1.2rem; }
+  
+  .stat-item .label { font-size: 0.75rem; }
+  
+  .stat-item .value { font-size: 1rem; }
+  
+  .user-item { padding: 10px; }
+  
+  .rank { font-size: 1.4rem; }
+  
+  .nickname { font-size: 0.95rem; }
+  
+  .user-data { padding: 8px; }
+  
+  .data-row { font-size: 0.85rem; }
+  
+  .ranking-card { padding: 14px; gap: 10px; }
+  
+  .ranking-card h3 { font-size: 1rem; }
+  
+  .rank-badge { font-size: 2.5rem; }
+  
+  .my-stats { gap: 10px; }
+  
+  .stat-box { padding: 8px 12px; }
+  
+  .stat-label { font-size: 0.75rem; }
+  
+  .stat-value { font-size: 1.1rem; }
+  
+  .pred-item { padding: 8px; gap: 6px; }
+  
+  .pred-item .match { font-size: 0.9rem; }
+  
+  .pred-item .info { font-size: 0.8rem; }
 }
 </style>

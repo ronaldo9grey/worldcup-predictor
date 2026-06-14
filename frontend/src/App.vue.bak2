@@ -1,29 +1,14 @@
 <template>
   <div class="app">
     <!-- 验证守卫 -->
-    <AuthGuard 
-      v-if="!isAuthenticated" 
-      :token="validToken"
-      @authenticated="onAuthenticated" 
-    />
-
-    <!-- 主应用(验证后显示) -->
+    <AuthGuard v-if="!isAuthenticated" @authenticated="onAuthenticated" />
+    
+    <!-- 主应用（验证后显示） -->
     <template v-else>
       <header class="header">
         <div class="header-content">
           <h1><span class="logo">⚽</span> 世界杯预测</h1>
           <span class="header-sub">2026 美加墨</span>
-        </div>
-        <div class="header-user">
-          <span v-if="currentUser" class="user-greeting">
-            <span class="user-icon">👤</span>
-            <span class="user-name">{{ currentUser.nickname }}</span>
-            <button class="logout-btn" @click="logout" title="退出登录">✕</button>
-          </span>
-          <span v-else class="user-greeting">
-            <span class="user-icon">👋</span>
-            <span class="user-name">朋友，你好</span>
-          </span>
         </div>
       </header>
 
@@ -33,7 +18,7 @@
           <span class="icon">🏆</span>
           <span class="text">小组赛</span>
         </div>
-        <div v-if="isAdmin" :class="['tab', { active: activeTab === 'simulate' }]" @click="activeTab = 'simulate'">
+        <div :class="['tab', { active: activeTab === 'simulate' }]" @click="activeTab = 'simulate'">
           <span class="icon">👑</span>
           <span class="text">冠军之路</span>
         </div>
@@ -45,7 +30,7 @@
           <span class="icon">🏅</span>
           <span class="text">排行榜</span>
         </div>
-        <div v-if="isAdmin" :class="['tab', { active: activeTab === 'accuracy' }]" @click="activeTab = 'accuracy'">
+        <div :class="['tab', { active: activeTab === 'accuracy' }]" @click="activeTab = 'accuracy'">
           <span class="icon">📊</span>
           <span class="text">准确率</span>
         </div>
@@ -58,11 +43,11 @@
           <span class="text">历史</span>
         </div>
 
-        <div v-if="isAdmin" :class="['tab', { active: activeTab === 'models' }]" @click="activeTab = 'models'">
+        <div :class="['tab', { active: activeTab === 'models' }]" @click="activeTab = 'models'">
           <span class="icon">🤖</span>
           <span class="text">模型</span>
         </div>
-        <div v-if="isAdmin" :class="['tab', { active: activeTab === 'algorithm' }]" @click="activeTab = 'algorithm'">
+        <div :class="['tab', { active: activeTab === 'algorithm' }]" @click="activeTab = 'algorithm'">
           <span class="icon">🔬</span>
           <span class="text">算法</span>
         </div>
@@ -114,14 +99,11 @@
       </div>
     </div>
     </template>
-    
-    <!-- Toast提示 -->
-    <Toast ref="toastRef" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, provide } from 'vue'
+import { ref, onMounted } from 'vue'
 import AuthGuard from './components/AuthGuard.vue'
 import GroupDetail from './components/GroupDetail.vue'
 import SimulationResult from './components/SimulationResult.vue'
@@ -133,7 +115,6 @@ import ModelComparison from './components/ModelComparison.vue'
 import DataExtension from './components/DataExtension.vue'
 import Leaderboard from './components/Leaderboard.vue'
 import MatchDetailPanel from './components/MatchDetailPanel.vue'
-import Toast from './components/Toast.vue'
 
 
 const isAuthenticated = ref(false)
@@ -141,48 +122,25 @@ const isAdmin = ref(false)
 const activeTab = ref('groups')
 const algorithmInfo = ref(null)
 const matchDetail = ref(null)
-const currentUser = ref(null)  // 新增：当前用户信息
-const toastRef = ref(null)  // Toast组件引用
-
-// 更新用户信息的函数
-function updateUser(user) {
-  currentUser.value = user
-}
-
-// 显示Toast提示
-function showToast(message, type = 'success', duration = 3000) {
-  if (toastRef.value) {
-    toastRef.value.show(message, type, duration)
-  }
-}
-
-// 提供全局状态
-provide('currentUser', currentUser)
-provide('updateUser', updateUser)
-provide('showToast', showToast)
 
 // 验证相关
-const AUTH_KEY = 'wc_verify_' + Math.random().toString(36).substr(2, 9)  // 随机key，防止绕过
-const AUTH_TIME_KEY = 'wc_ts_' + Math.random().toString(36).substr(2, 9)
-const AUTH_ROLE_KEY = 'wc_role_' + Math.random().toString(36).substr(2, 9)
-const AUTH_TOKEN_KEY = 'wc_token_' + Math.random().toString(36).substr(2, 9)  // 新增：验证token
+const AUTH_KEY = 'worldcup_auth'
+const AUTH_TIME_KEY = 'worldcup_auth_time'
+const AUTH_ROLE_KEY = 'worldcup_auth_role'
 const AUTH_EXPIRY_HOURS = 4
 
-// 管理员凭证(强密码)
+// 管理员凭证（强密码）
 const ADMIN_PASSWORD = 'Wg@2026WC!Admin#Strong'
-
-// 验证token（必须通过验证才能获得）
-const validToken = 'wc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 15)
 
 // 检查验证是否过期
 function isAuthExpired() {
   const authTime = localStorage.getItem(AUTH_TIME_KEY)
   if (!authTime) return true
-
+  
   const authTimestamp = parseInt(authTime)
   const now = Date.now()
   const hoursPassed = (now - authTimestamp) / (1000 * 60 * 60)
-
+  
   return hoursPassed >= AUTH_EXPIRY_HOURS
 }
 
@@ -190,30 +148,25 @@ function isAuthExpired() {
 onMounted(() => {
   const auth = localStorage.getItem(AUTH_KEY)
   const role = localStorage.getItem(AUTH_ROLE_KEY)
-  const token = localStorage.getItem(AUTH_TOKEN_KEY)
   const expired = isAuthExpired()
-
-  // 必须同时满足：验证标记、角色、token、未过期
-  if (auth === 'true' && !expired && role && token === validToken) {
+  
+  if (auth === 'true' && !expired) {
     isAuthenticated.value = true
     isAdmin.value = role === 'admin'
   } else {
-    // 清除所有验证相关信息
+    // 清除过期验证
     localStorage.removeItem(AUTH_KEY)
     localStorage.removeItem(AUTH_TIME_KEY)
     localStorage.removeItem(AUTH_ROLE_KEY)
-    localStorage.removeItem(AUTH_TOKEN_KEY)
   }
 })
 
 const onAuthenticated = (role) => {
   isAuthenticated.value = true
   isAdmin.value = role === 'admin'
-  // 保存验证时间戳、角色和token
-  localStorage.setItem(AUTH_KEY, 'true')
+  // 保存验证时间戳和角色
   localStorage.setItem(AUTH_TIME_KEY, Date.now().toString())
   localStorage.setItem(AUTH_ROLE_KEY, role)
-  localStorage.setItem(AUTH_TOKEN_KEY, validToken)  // 存储token
 }
 
 async function loadAlgorithm() {
@@ -230,68 +183,11 @@ async function showMatchDetail({ home, away, group, idx }) {
   } catch(e) {}
 }
 
-onMounted(() => {
+onMounted(() => { 
   if (isAuthenticated.value) {
-    loadAlgorithm()
+    loadAlgorithm() 
   }
-  // 获取当前用户信息
-  fetchCurrentUser()
 })
-
-async function fetchCurrentUser() {
-  try {
-    const resp = await fetch('/worldcup/api/user/me')
-    const data = await resp.json()
-    if (data.logged_in && data.user) {
-      currentUser.value = data.user
-    } else {
-      currentUser.value = null
-    }
-  } catch (e) {
-    console.error('获取用户信息失败:', e)
-    currentUser.value = null
-  }
-}
-
-function logout() {
-  // 调用登出API清除Cookie
-  fetch('/worldcup/api/user/logout')
-    .then(resp => resp.json())
-    .then(data => {
-      // 清除所有验证信息
-      localStorage.removeItem(AUTH_KEY)
-      localStorage.removeItem(AUTH_TIME_KEY)
-      localStorage.removeItem(AUTH_ROLE_KEY)
-      localStorage.removeItem(AUTH_TOKEN_KEY)
-      localStorage.removeItem('worldcup_device_key')
-      // 清除用户状态
-      currentUser.value = null
-      // 提示用户
-      if (showToast) {
-        showToast('已退出登录', 'success', 3000)
-      }
-      // 延迟刷新
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
-    })
-    .catch(e => {
-      console.error('登出失败:', e)
-      // 即使API失败，也清除所有验证信息
-      localStorage.removeItem(AUTH_KEY)
-      localStorage.removeItem(AUTH_TIME_KEY)
-      localStorage.removeItem(AUTH_ROLE_KEY)
-      localStorage.removeItem(AUTH_TOKEN_KEY)
-      localStorage.removeItem('worldcup_device_key')
-      currentUser.value = null
-      if (showToast) {
-        showToast('已退出登录', 'success', 3000)
-      }
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
-    })
-}
 </script>
 
 <style>
@@ -309,108 +205,54 @@ body {
 }
 
 /* 头部 */
-.header {
-  background:linear-gradient(135deg,#1a472a,#2d5a3d);
-  color:white;
-  padding:14px;
-  position:sticky;
-  top:0;
-  z-index:100;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.header { 
+  background:linear-gradient(135deg,#1a472a,#2d5a3d); 
+  color:white; 
+  padding:14px; 
+  position:sticky; 
+  top:0; 
+  z-index:100; 
 }
 
-.header-content {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+.header-content { 
+  max-width:1200px; 
+  margin:0 auto; 
+  display:flex; 
+  justify-content:space-between; 
+  align-items:center; 
 }
 
-.header h1 {
-  font-size:1.5rem;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin: 0;
+.header h1 { 
+  font-size:1.5rem; 
+  display:flex; 
+  align-items:center; 
+  gap:8px; 
 }
 
-.header-sub {
-  font-size:1rem;
-  opacity:0.8;
-  margin-left: 12px;
+.header-sub { 
+  font-size:1rem; 
+  opacity:0.8; 
 }
 
-.logo {
-  font-size:1.8rem;
-}
-
-/* 用户问候 */
-.header-user {
-  margin-left: auto;
-  padding-left: 20px;
-}
-
-.user-greeting {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  font-size: 1rem;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-}
-
-.user-icon {
-  font-size: 1.2rem;
-}
-
-.user-name {
-  color: white;
-}
-
-.logout-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  border: none;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-  margin-left: 4px;
-}
-
-.logout-btn:hover {
-  background: rgba(255, 255, 255, 0.5);
-  transform: scale(1.1);
-}
-
-.logout-btn:active {
-  transform: scale(0.95);
+.logo { 
+  font-size:1.8rem; 
 }
 
 /* 容器 */
-.container {
-  max-width:1200px;
-  margin:0 auto;
-  padding:12px;
+.container { 
+  max-width:1200px; 
+  margin:0 auto; 
+  padding:12px; 
 }
 
 /* 标签页 */
-.tabs {
-  display:flex;
-  background:white;
-  border-radius:10px;
-  padding:3px;
-  margin:12px 0;
-  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+.tabs { 
+  display:flex; 
+  background:white; 
+  border-radius:10px; 
+  padding:3px; 
+  margin:12px 0; 
+  box-shadow:0 1px 4px rgba(0,0,0,0.06); 
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -422,16 +264,16 @@ body {
   display: none; /* Chrome/Safari */
 }
 
-.tab {
+.tab { 
   flex: 0 0 auto;
-  padding:12px 18px;
-  text-align:center;
-  border-radius:8px;
-  cursor:pointer;
-  font-weight:600;
-  color:#666;
-  font-size:1.1rem;
-  transition:all 0.2s;
+  padding:12px 18px; 
+  text-align:center; 
+  border-radius:8px; 
+  cursor:pointer; 
+  font-weight:600; 
+  color:#666; 
+  font-size:1.1rem; 
+  transition:all 0.2s; 
   display: flex;
   align-items: center;
   gap: 8px;
@@ -446,55 +288,55 @@ body {
   font-size: 1rem;
 }
 
-.tab.active {
-  background:#1a472a;
-  color:white;
+.tab.active { 
+  background:#1a472a; 
+  color:white; 
 }
 
 /* 模态框 */
-.modal-overlay {
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.5);
-  z-index:1000;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:16px;
+.modal-overlay { 
+  position:fixed; 
+  inset:0; 
+  background:rgba(0,0,0,0.5); 
+  z-index:1000; 
+  display:flex; 
+  align-items:center; 
+  justify-content:center; 
+  padding:16px; 
 }
 
-.modal-content {
-  background:white;
-  padding:20px;
-  border-radius:16px;
-  max-width:90vw;
-  max-height:90vh;
-  overflow:auto;
-  width:400px;
+.modal-content { 
+  background:white; 
+  padding:20px; 
+  border-radius:16px; 
+  max-width:90vw; 
+  max-height:90vh; 
+  overflow:auto; 
+  width:400px; 
 }
 
 /* 移动端适配 */
 @media (max-width: 768px) {
   .header {
-    padding: 10px;
+    padding: 12px;
   }
   
   .header h1 {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
   }
   
   .logo {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
   }
   
   .header-sub {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
   
   .container {
     padding: 10px;
   }
-
+  
   .tabs {
     padding: 3px;
     margin: 10px 0;
@@ -524,20 +366,16 @@ body {
 }
 
 @media (max-width: 480px) {
-  .header {
-    padding: 8px;
-  }
-  
   .header h1 {
     font-size: 1.1rem;
   }
   
   .logo {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
   }
   
   .header-sub {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
   
   .container {
@@ -550,22 +388,16 @@ body {
   }
   
   .tab {
-    padding: 8px 12px;
+    padding: 9px 12px;
     font-size: 0.95rem;
   }
   
   .tab .icon {
-    font-size: 1rem;
+    font-size: 1.05rem;
   }
   
   .tab .text {
     font-size: 0.85rem;
-  }
-  
-  .modal-content {
-    width: 96vw;
-    padding: 16px;
-    border-radius: 10px;
   }
 }
 
@@ -577,21 +409,21 @@ body {
     align-items: center;
     justify-content: center;
   }
-
+  
   button, .button {
     min-height: 44px;
     min-width: 44px;
   }
 }
 
-/* 安全区域适配(iPhone X等) */
+/* 安全区域适配（iPhone X等） */
 @supports (padding: max(0px)) {
   .container {
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-
+  
   .header {
     padding-top: max(14px, env(safe-area-inset-top));
   }

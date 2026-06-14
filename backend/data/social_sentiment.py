@@ -19,6 +19,54 @@ SOCIAL_PLATFORMS = {
 
 # 球队社交媒体情感数据（模拟2026世界杯前的球迷情绪）
 TEAM_SENTIMENT = {
+    "QAT": {
+        "overall_sentiment": 0.58,
+        "confidence_level": 0.52,
+        "buzz_score": 65,
+        "recent_keywords": ["首次资格出线", "阿菲夫", "阿尔莫伊兹·阿里", "亚洲冠军"],
+        "negative_keywords": ["大赛经验不足", "实力差距"],
+        "fan_expectation": "low",
+        "pressure_level": "low",
+        "support_regions": ["卡塔尔", "阿拉伯世界"],
+        "last_updated": "2026-06-12",
+    },
+    
+    "SUI": {
+        "overall_sentiment": 0.68,
+        "confidence_level": 0.72,
+        "buzz_score": 78,
+        "recent_keywords": ["连续第六届世界杯", "扎卡领袖", "稳定输出"],
+        "negative_keywords": ["阿坎吉伤疑", "恩博洛伤疑"],
+        "fan_expectation": "moderate",
+        "pressure_level": "moderate",
+        "support_regions": ["瑞士", "欧洲"],
+        "last_updated": "2026-06-12",
+    },
+    
+    "CAN": {
+        "overall_sentiment": 0.62,
+        "confidence_level": 0.68,
+        "buzz_score": 72,
+        "recent_keywords": ["阿方索·戴维斯", "2026东道主", "崛起"],
+        "negative_keywords": [],
+        "fan_expectation": "moderate",
+        "pressure_level": "low",
+        "support_regions": ["加拿大", "北美"],
+        "last_updated": "2026-06-12",
+    },
+    
+    "BIH": {
+        "overall_sentiment": 0.55,
+        "confidence_level": 0.58,
+        "buzz_score": 60,
+        "recent_keywords": ["哲科最后一舞", "老将传奇"],
+        "negative_keywords": ["老化", "依赖哲科"],
+        "fan_expectation": "low",
+        "pressure_level": "low",
+        "support_regions": ["波黑", "巴尔干"],
+        "last_updated": "2026-06-12",
+    },
+    
     # 热门球队
     "ARG": {
         "overall_sentiment": 0.78,  # 0-1范围，>0.5为正面
@@ -48,12 +96,12 @@ TEAM_SENTIMENT = {
         "overall_sentiment": 0.72,
         "confidence_level": 0.78,
         "buzz_score": 90,
-        "recent_keywords": ["维尼修斯崛起", "无内马尔", "新一代"],
-        "negative_keywords": ["内马尔缺席", "防守不稳"],
+        "recent_keywords": ["维尼修斯崛起", "内马尔回归", "第四次世界杯", "安切洛蒂时代"],
+        "negative_keywords": ["阿利松缺席", "拉菲尼亚受伤", "罗德里戈受伤", "马尔基尼奥斯缺席"],
         "fan_expectation": "high",
         "pressure_level": "extreme",
         "support_regions": ["巴西", "拉美"],
-        "last_updated": "2026-05-25",
+        "last_updated": "2026-06-12",
     },
     
     "ENG": {
@@ -114,6 +162,42 @@ TEAM_SENTIMENT = {
         "pressure_level": "low",
         "support_regions": ["荷兰", "欧洲"],
         "last_updated": "2026-05-25",
+    },
+    
+    "MAR": {
+        "overall_sentiment": 0.75,
+        "confidence_level": 0.80,
+        "buzz_score": 88,
+        "recent_keywords": ["2022四强", "阿什拉夫", "迪亚斯", "阿特拉斯雄狮"],
+        "negative_keywords": ["马兹拉维受伤", "埃扎尔祖利受伤", "多名主力伤疑"],
+        "fan_expectation": "high",
+        "pressure_level": "moderate",
+        "support_regions": ["摩洛哥", "非洲", "欧洲阿拉伯裔"],
+        "last_updated": "2026-06-08",
+    },
+    
+    "HTI": {
+        "overall_sentiment": 0.55,
+        "confidence_level": 0.45,
+        "buzz_score": 45,
+        "recent_keywords": ["52年后回归", "海外球员", "加勒比精神"],
+        "negative_keywords": ["实力差距", "皮埃尔受伤"],
+        "fan_expectation": "low",
+        "pressure_level": "low",
+        "support_regions": ["海地", "北美海地裔"],
+        "last_updated": "2026-06-10",
+    },
+    
+    "SCO": {
+        "overall_sentiment": 0.60,
+        "confidence_level": 0.65,
+        "buzz_score": 70,
+        "recent_keywords": ["1998年后首次", "麦克托米奈", "吉尔莫缺席", "苏格兰风笛军团"],
+        "negative_keywords": ["吉尔莫受伤", "多名伤病", "攻击力不足"],
+        "fan_expectation": "moderate",
+        "pressure_level": "low",
+        "support_regions": ["苏格兰", "英国", "英联邦"],
+        "last_updated": "2026-06-12",
     },
     
     # 中游球队

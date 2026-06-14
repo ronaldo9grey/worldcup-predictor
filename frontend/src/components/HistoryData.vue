@@ -412,4 +412,274 @@ export default {
   color: #888;
   font-size: 0.9rem;
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .sub-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .sub-tab {
+    padding: 7px 12px;
+    font-size: 0.85rem;
+  }
+  
+  .value-row {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px;
+  }
+  
+  .value-team {
+    flex: 0 0 auto;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .team-info {
+    margin-left: 0;
+    font-size: 0.8rem;
+  }
+  
+  .value-bar-wrap {
+    width: 100%;
+    order: 1;
+  }
+  
+  .value-amount {
+    order: 2;
+    width: auto;
+    padding-left: 10px;
+  }
+  
+  .value-tier {
+    order: 3;
+  }
+  
+  .tier-legend {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .pedigree-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+  }
+  
+  .pedigree-team {
+    flex: 0 0 auto;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .pedigree-stats {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-around;
+  }
+  
+  .stat-item {
+    padding: 6px 8px;
+  }
+  
+  .stat-val {
+    font-size: 0.9rem;
+  }
+  
+  .h2h-selector {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .team-select {
+    min-width: 100px;
+    padding: 7px 10px;
+  }
+  
+  .h2h-summary {
+    padding: 16px;
+  }
+  
+  .team-flag.large {
+    font-size: 2rem;
+  }
+  
+  .h2h-wins {
+    font-size: 1.3rem;
+  }
+  
+  .match-record {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  
+  .match-date {
+    width: auto;
+  }
+  
+  .match-competition {
+    width: 100%;
+    order: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .history-module {
+    padding: 12px;
+  }
+  
+  .sub-tabs {
+    gap: 5px;
+  }
+  
+  .sub-tab {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+  
+  .section-title {
+    font-size: 0.95rem;
+  }
+  
+  .value-row {
+    padding: 8px;
+  }
+  
+  .value-rank {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+  }
+  
+  .team-flag {
+    font-size: 1.1rem;
+  }
+  
+  .team-name {
+    font-size: 0.9rem;
+  }
+  
+  .team-info {
+    font-size: 0.75rem;
+  }
+  
+  .value-amount {
+    font-size: 0.85rem;
+  }
+  
+  .value-tier {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
+  
+  .tier-legend {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .tier-legend .tier {
+    font-size: 0.75rem;
+  }
+  
+  .pedigree-row {
+    padding: 10px;
+  }
+  
+  .pedigree-rank {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+  }
+  
+  .stat-item {
+    padding: 5px 7px;
+  }
+  
+  .stat-icon {
+    font-size: 0.9rem;
+  }
+  
+  .stat-val {
+    font-size: 0.85rem;
+  }
+  
+  .stat-label {
+    font-size: 0.65rem;
+  }
+  
+  .pedigree-badge {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+  }
+  
+  .h2h-selector {
+    padding: 10px;
+  }
+  
+  .team-select {
+    min-width: 90px;
+    padding: 6px 8px;
+    font-size: 0.85rem;
+  }
+  
+  .vs-label {
+    font-size: 0.9rem;
+  }
+  
+  .query-btn {
+    padding: 7px 14px;
+  }
+  
+  .h2h-summary {
+    padding: 12px;
+  }
+  
+  .team-flag.large {
+    font-size: 1.8rem;
+  }
+  
+  .team-name-cn {
+    font-size: 0.9rem;
+  }
+  
+  .h2h-wins {
+    font-size: 1.2rem;
+  }
+  
+  .h2h-total {
+    font-size: 1rem;
+  }
+  
+  .h2h-draws {
+    font-size: 0.85rem;
+  }
+  
+  .matches-title {
+    font-size: 0.85rem;
+  }
+  
+  .match-record {
+    padding: 8px;
+  }
+  
+  .match-date {
+    font-size: 0.75rem;
+  }
+  
+  .match-competition {
+    font-size: 0.8rem;
+  }
+  
+  .match-score {
+    font-size: 0.9rem;
+  }
+}
 </style>

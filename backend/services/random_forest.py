@@ -346,18 +346,21 @@ class RandomForestPredictor:
         """保存模型"""
         import pickle
         with open(path, 'wb') as f:
-            pickle.dump({
-                'model': self.model,
-                'feature_names': self.feature_names
-            }, f)
+            pickle.dump(self, f)  # 直接保存整个对象
     
     def load_model(self, path: str):
         """加载模型"""
         import pickle
         with open(path, 'rb') as f:
-            data = pickle.load(f)
-            self.model = data['model']
-            self.feature_names = data['feature_names']
+            loaded = pickle.load(f)
+            # 如果加载的是字典（旧格式），则恢复
+            if isinstance(loaded, dict):
+                self.model = loaded['model']
+                self.feature_names = loaded['feature_names']
+            else:
+                # 新格式：直接替换
+                self.model = loaded.model
+                self.feature_names = loaded.feature_names
 
 
 def create_random_forest(n_estimators: int = 100) -> RandomForestPredictor:

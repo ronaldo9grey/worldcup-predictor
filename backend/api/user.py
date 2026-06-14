@@ -1,6 +1,7 @@
 """用户功能API路由"""
-from fastapi import APIRouter, Cookie, Response, Query
+from fastapi import APIRouter, Cookie, Response, Query, Body
 from typing import Dict, Any, Optional
+from pydantic import BaseModel
 
 from repositories.user_repo import UserRepository
 from core.database import get_database
@@ -14,6 +15,18 @@ TEAM_LOOKUP = get_team_lookup()
 SCHEDULE = MATCH_SCHEDULE
 
 
+class PredictRequest(BaseModel):
+    """预测请求模型"""
+    nickname: str
+    device_key: str = None  # 设备密钥（可选）
+    group: str
+    match_idx: int
+    prediction: str  # HOME_WIN/DRAW/AWAY_WIN
+    confidence: str  # HIGH/MEDIUM/LOW
+    home_code: str
+    away_code: str
+
+
 def get_user_repo() -> UserRepository:
     """获取用户仓库实例"""
     db = get_database()
@@ -21,15 +34,38 @@ def get_user_repo() -> UserRepository:
 
 
 @router.post("/login")
-async def login(nickname: str = Query(..., description="用户昵称")) -> Dict[str, Any]:
+async def login(
+    nickname: str = Query(..., description="用户昵称"),
+    device_key: str = Query(None, description="设备密钥"),
+    response: Response = None
+) -> Dict[str, Any]:
     """
     用户登录/注册
     
-    简单模式：传入昵称即可，返回 user_id 存入 cookie
-    相同昵称会返回已有用户，防止重复注册
+    简单模式：传入昵称和device_key即可
+    - 首次登录：自动创建用户并绑定device_key
+    - 再次登录：验证device_key，防止冒用
     """
     repo = get_user_repo()
-    user = repo.create_user(nickname)
+    user = repo.create_user(nickname, device_key)
+    
+    # 检查是否被拒绝
+    if user.get("error"):
+        return {
+            "success": False,
+            "error": user["error"],
+            "nickname_taken": user.get("nickname_taken", False)
+        }
+    
+    # 设置Cookie（30天有效期）
+    if response and user.get("user_id"):
+        response.set_cookie(
+            key="user_id",
+            value=user["user_id"],
+            max_age=30*24*60*60,  # 30天
+            httponly=False,
+            samesite="lax"
+        )
     
     # 根据是否为已有用户返回不同提示
     if user.get("is_existing"):
@@ -113,18 +149,151 @@ async def save_prediction(
     }
 
 
+@router.post("/predict-simple")
+async def save_prediction_simple(request: PredictRequest = Body(...)) -> Dict[str, Any]:
+    """简化预测接口 - 只需昵称即可参与"""
+    repo = get_user_repo()
+    
+    # 创建/获取用户，验证device_key
+    user = repo.create_user(request.nickname, request.device_key)
+    
+    # 检查是否被拒绝
+    if user.get("error"):
+        return {
+            "success": False,
+            "error": user["error"],
+            "nickname_taken": user.get("nickname_taken", False)
+        }
+    
+    # 检查比赛是否已结束
+    # 直接使用 WorldCup26Source 获取实时数据
+    from data.sources.worldcup26_source import WorldCup26Source
+    try:
+        source = WorldCup26Source()
+        matches = await source.get_matches(group=request.group)
+        
+        # 球队代码映射（WorldCup26.ir 使用旧代码）
+        code_mapping = {'RSA': 'ZAF', 'KSA': 'SAU', 'CHI': 'CHL'}
+        
+        # 找到对应比赛
+        for match in matches:
+            # 获取比赛双方代码（转换旧代码）
+            match_home = code_mapping.get(match.home_code, match.home_code)
+            match_away = code_mapping.get(match.away_code, match.away_code)
+            
+            # 检查是否是这场比赛
+            if (match_home == request.home_code and 
+                match_away == request.away_code):
+                
+                # 检查比赛状态
+                print(f"比赛状态: {match.status} ({request.home_code} vs {request.away_code}), 比分: {match.home_score}-{match.away_score}")
+                
+                # 如果比赛已结束，拒绝预测
+                if match.status == 'finished':
+                    return {
+                        "success": False,
+                        "error": "该比赛已结束，无法预测"
+                    }
+                
+                # 如果比赛正在进行中，拒绝预测
+                if match.status == 'live':
+                    return {
+                        "success": False,
+                        "error": "该比赛已开始，无法预测"
+                    }
+                break
+    except Exception as e:
+        print(f"检查比赛状态失败: {e}")
+        # 如果检查失败，允许预测（降级策略）
+    
+    
+    user_id = user["user_id"]
+    
+    # 构建match_id
+    match_id = f"{request.group}_{request.match_idx}"
+    
+    # 保存预测
+    result = repo.save_prediction(
+        user_id=user_id,
+        match_id=match_id,
+        group_name=request.group,
+        match_idx=request.match_idx,
+        home_code=request.home_code,
+        away_code=request.away_code,
+        prediction=request.prediction,
+        confidence=request.confidence
+    )
+    
+    # 添加中文队名
+    home_team = TEAM_LOOKUP.get(request.home_code)
+    away_team = TEAM_LOOKUP.get(request.away_code)
+    if home_team:
+        result["home_name_cn"] = home_team["name_cn"]
+    if away_team:
+        result["away_name_cn"] = away_team["name_cn"]
+    
+    return {
+        "success": True,
+        "user": user,
+        "prediction": result,
+        "message": f"感谢参与预测，{request.nickname}！"
+    }
+
+
+@router.get("/prediction-stats/{group}/{match_idx}")
+async def get_prediction_stats(group: str, match_idx: int) -> Dict[str, Any]:
+    """获取某场比赛的预测统计"""
+    repo = get_user_repo()
+    match_id = f"{group}_{match_idx}"
+    
+    # 获取该比赛的所有预测
+    predictions = repo.get_match_predictions(match_id)
+    
+    # 统计各选项数量
+    home_win_count = sum(1 for p in predictions if p["prediction"] == "HOME_WIN")
+    draw_count = sum(1 for p in predictions if p["prediction"] == "DRAW")
+    away_win_count = sum(1 for p in predictions if p["prediction"] == "AWAY_WIN")
+    total = len(predictions)
+    
+    # 计算百分比
+    if total > 0:
+        home_win_pct = round(home_win_count / total * 100, 1)
+        draw_pct = round(draw_count / total * 100, 1)
+        away_win_pct = round(away_win_count / total * 100, 1)
+    else:
+        home_win_pct = 0
+        draw_pct = 0
+        away_win_pct = 0
+    
+    return {
+        "match_id": match_id,
+        "group": group,
+        "match_idx": match_idx,
+        "total_predictions": total,
+        "home_win_count": home_win_count,
+        "draw_count": draw_count,
+        "away_win_count": away_win_count,
+        "home_win_pct": home_win_pct,
+        "draw_pct": draw_pct,
+        "away_win_pct": away_win_pct
+    }
+
+
 @router.get("/my-predictions")
 async def get_my_predictions(
     user_id: Optional[str] = Cookie(None)
 ) -> Dict[str, Any]:
-    """获取我的预测记录（含中文队名和比赛时间）"""
+    """获取我的预测记录（含中文队名、比赛时间、验证结果）"""
     if not user_id:
         return {"error": "请先登录", "predictions": []}
     
     repo = get_user_repo()
     predictions = repo.get_user_predictions(user_id)
     
-    # 添加中文队名和比赛时间
+    # 球队代码映射
+    code_mapping = {"RSA": "ZAF", "KSA": "SAU"}
+    
+    # 添加中文队名、比赛时间和验证结果
     for pred in predictions:
         home_team = TEAM_LOOKUP.get(pred["home_code"])
         away_team = TEAM_LOOKUP.get(pred["away_code"])
@@ -139,6 +308,83 @@ async def get_my_predictions(
             pred["match_datetime"] = SCHEDULE[match_id]["datetime"]
             pred["match_date"] = SCHEDULE[match_id]["date"]
             pred["match_time"] = SCHEDULE[match_id]["time"]
+        
+        # 优先使用数据库中已保存的验证结果
+        if pred.get("verified_at"):
+            # 已验证的预测，使用保存的数据
+            pred["match_status"] = "finished"
+            # actual_result、is_correct、points_earned 已经在 pred 中
+        else:
+            # 未验证的预测，设置默认值
+            pred["match_status"] = "pending"
+            pred["actual_result"] = None
+            pred["is_correct"] = None
+            pred["points_earned"] = None
+    
+    # 批量获取比赛状态（从数据服务）- 仅处理未验证的预测
+    try:
+        from services.data_service import get_data_service
+        import asyncio
+        
+        ds = get_data_service()
+        
+        # 只处理未验证的预测
+        unverified_preds = [p for p in predictions if not p.get("verified_at")]
+        
+        if unverified_preds:
+            # 获取所有涉及的组的比赛数据
+            groups_needed = set(pred["group_name"] for pred in unverified_preds)
+            
+            for group in groups_needed:
+                try:
+                    matches = await asyncio.wait_for(
+                        ds.get_matches(group=group),
+                        timeout=5.0
+                    )
+                    
+                    # 更新该组所有预测的状态
+                    for pred in unverified_preds:
+                        if pred["group_name"] != group:
+                            continue
+                        
+                        # 查找对应比赛
+                        for match in matches:
+                            match_home = code_mapping.get(match.get("home"), match.get("home"))
+                            match_away = code_mapping.get(match.get("away"), match.get("away"))
+                            
+                            if match_home == pred["home_code"] and match_away == pred["away_code"]:
+                                match_status = match.get("status", "scheduled")
+                                pred["match_status"] = "finished" if match_status == "finished" else "live" if match_status == "live" else "pending"
+                                
+                                # 如果比赛结束，判断预测结果
+                                if match_status == "finished":
+                                    home_score = match.get("home_score")
+                                    away_score = match.get("away_score")
+                                    
+                                    if home_score is not None and away_score is not None:
+                                        if home_score > away_score:
+                                            pred["actual_result"] = "HOME_WIN"
+                                        elif home_score < away_score:
+                                            pred["actual_result"] = "AWAY_WIN"
+                                        else:
+                                            pred["actual_result"] = "DRAW"
+                                        
+                                        # 判断预测是否正确
+                                        pred["is_correct"] = (pred["prediction"] == pred["actual_result"])
+                                        
+                                        # 计算得分
+                                        if pred["is_correct"]:
+                                            confidence = pred.get("confidence", "MEDIUM")
+                                            points_map = {"HIGH": 3, "MEDIUM": 2, "LOW": 5}
+                                            pred["points_earned"] = points_map.get(confidence, 2)
+                                        else:
+                                            pred["points_earned"] = 0
+                                break
+                except Exception as e:
+                    print(f"获取{group}组比赛数据失败: {e}")
+                    continue
+    except Exception as e:
+        print(f"批量获取比赛状态失败: {e}")
     
     # 按小组分组
     grouped = {}
@@ -152,6 +398,17 @@ async def get_my_predictions(
         "total": len(predictions),
         "predictions": predictions,
         "by_group": grouped
+    }
+
+
+@router.get("/logout")
+async def logout(response: Response) -> Dict[str, Any]:
+    """用户登出"""
+    # 清除Cookie
+    response.delete_cookie(key="user_id")
+    return {
+        "success": True,
+        "message": "已退出登录"
     }
 
 

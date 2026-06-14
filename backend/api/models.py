@@ -180,8 +180,8 @@ async def predict_match_by_group(group: str, match_idx: int):
     if match_idx < 0 or match_idx >= 6:
         raise HTTPException(status_code=400, detail="比赛索引必须在 0-5 之间")
     
-    # 小组赛对阵组合
-    pairs = [(0,1), (0,2), (0,3), (1,2), (1,3), (2,3)]
+    # 小组赛对阵组合（与前端 generate_match_schedule 保持一致）
+    pairs = [(0,1), (2,3), (0,2), (1,3), (0,3), (1,2)]
     home_idx, away_idx = pairs[match_idx]
     
     home_team = teams[home_idx]

@@ -102,11 +102,11 @@ class ModelEnsemble:
         # 当前模型版本
         self.current_version = None
         
-        # 模型权重
+        # 模型权重（随机森林已重新训练，恢复正常权重）
         self.model_weights = {
-            'bayesian': 0.4,
-            'neural_network': 0.3,
-            'random_forest': 0.3
+            'bayesian': 0.35,
+            'neural_network': 0.30,
+            'random_forest': 0.35  # 恢复随机森林权重
         }
         
         # 性能追踪

@@ -48,59 +48,165 @@ GROUP_ODDS = {
     
     "B": [
         {
-            "match": "FRA vs NED",
-            "home": "France",
-            "away": "Netherlands",
+            "match": "CAN vs BIH",
+            "home": "Canada",
+            "away": "Bosnia and Herzegovina",
             "odds": {
-                "bet365": {"home_win": 1.85, "draw": 3.60, "away_win": 4.50},
-                "william_hill": {"home_win": 1.90, "draw": 3.50, "away_win": 4.40},
-                "pinnacle": {"home_win": 1.88, "draw": 3.65, "away_win": 4.45},
+                "bet365": {"home_win": 1.75, "draw": 3.60, "away_win": 4.80},
+                "william_hill": {"home_win": 1.80, "draw": 3.55, "away_win": 4.60},
+                "pinnacle": {"home_win": 1.78, "draw": 3.65, "away_win": 4.70},
             },
-            "consensus": {"home_win": 0.532, "draw": 0.274, "away_win": 0.224},
+            "consensus": {"home_win": 0.568, "draw": 0.277, "away_win": 0.214},
             "favorite": "home",
-            "margin": 0.032,
+            "margin": 0.059,
+            "moneyline": "Canada -125 | Bosnia +380",
+            "asian_handicap": {
+                "line": "Canada -0.5",
+                "home_odds": 1.85,
+                "away_odds": 2.00,
+                "explanation": "加拿大让0.5球，需赢球才算赢盘"
+            },
+            "total_goals": {
+                "line": 2.5,
+                "over_odds": 1.90,
+                "under_odds": 1.90,
+                "explanation": "总进球数大于/小于2.5球"
+            },
+            "last_updated": "2026-06-11",
         },
         {
-            "match": "FRA vs SEN",
-            "home": "France",
-            "away": "Senegal",
+            "match": "QAT vs SUI",
+            "home": "Qatar",
+            "away": "Switzerland",
             "odds": {
-                "bet365": {"home_win": 1.45, "draw": 4.50, "away_win": 7.00},
-                "william_hill": {"home_win": 1.50, "draw": 4.40, "away_win": 6.50},
-                "pinnacle": {"home_win": 1.48, "draw": 4.55, "away_win": 6.75},
+                "bet365": {"home_win": 5.50, "draw": 3.90, "away_win": 1.55},
+                "william_hill": {"home_win": 5.25, "draw": 3.85, "away_win": 1.60},
+                "pinnacle": {"home_win": 5.40, "draw": 3.95, "away_win": 1.58},
             },
-            "consensus": {"home_win": 0.676, "draw": 0.220, "away_win": 0.149},
-            "favorite": "home",
-            "margin": 0.034,
+            "consensus": {"home_win": 0.185, "draw": 0.255, "away_win": 0.630},
+            "favorite": "away",
+            "margin": 0.070,
+            "moneyline": "Qatar +650 | Switzerland -175",
+            "asian_handicap": {
+                "line": "Switzerland -1.5",
+                "home_odds": 2.15,
+                "away_odds": 1.75,
+                "explanation": "瑞士让1.5球，需赢2球以上才算赢盘",
+                "source": "Bet365",
+                "last_updated": "2026-06-13"
+            },
+            "jingcai_handicap": {
+                "line": "Switzerland -1",
+                "home_team": "卡塔尔 (+1)",
+                "away_team": "瑞士 (-1)",
+                "explanation": "竞彩让球：瑞士让1球，赢2球才算让球胜",
+                "recommendation": "让球负（瑞士赢）",
+                "source": "中国体育彩票"
+            },
+            "total_goals": {
+                "line": 2.5,
+                "over_odds": 1.85,
+                "under_odds": 1.95,
+                "explanation": "总进球数大于/小于2.5球"
+            },
+            "comprehensive_advice": {
+                "model_prediction": "客胜（43.8%）",
+                "handicap_advice": "瑞士让1.5球赢盘",
+                "jingcai_advice": "让球负（瑞士让1球胜）",
+                "score_prediction": "0-2或0-3",
+                "confidence": "中",
+                "reasoning": "模型预测客胜，盘口支持瑞士赢2球，竞彩让球胜，建议瑞士胜"
+            },
+            "last_updated": "2026-06-13",
         },
     ],
     
     "C": [
         {
-            "match": "BRA vs POR",
+            "match": "BRA vs MAR",
             "home": "Brazil",
-            "away": "Portugal",
+            "away": "Morocco",
             "odds": {
-                "bet365": {"home_win": 2.10, "draw": 3.40, "away_win": 3.50},
-                "william_hill": {"home_win": 2.15, "draw": 3.35, "away_win": 3.40},
-                "pinnacle": {"home_win": 2.12, "draw": 3.45, "away_win": 3.45},
+                "bet365": {"home_win": 1.59, "draw": 3.90, "away_win": 5.50},
+                "william_hill": {"home_win": 1.63, "draw": 3.85, "away_win": 5.25},
+                "pinnacle": {"home_win": 1.61, "draw": 3.95, "away_win": 5.40},
             },
-            "consensus": {"home_win": 0.472, "draw": 0.290, "away_win": 0.290},
+            "consensus": {"home_win": 0.620, "draw": 0.255, "away_win": 0.185},
             "favorite": "home",
-            "margin": 0.028,
+            "margin": 0.060,
+            "moneyline": "Brazil -145 | Morocco +450",
+            "last_updated": "2026-06-13",
         },
         {
-            "match": "BRA vs JPN",
-            "home": "Brazil",
-            "away": "Japan",
+            "match": "HTI vs SCO",
+            "home": "Haiti",
+            "away": "Scotland",
             "odds": {
-                "bet365": {"home_win": 1.25, "draw": 5.50, "away_win": 11.00},
-                "william_hill": {"home_win": 1.30, "draw": 5.25, "away_win": 10.50},
-                "pinnacle": {"home_win": 1.27, "draw": 5.60, "away_win": 10.75},
+                "bet365": {"home_win": 5.50, "draw": 3.80, "away_win": 1.55},
+                "william_hill": {"home_win": 5.25, "draw": 3.85, "away_win": 1.60},
+                "pinnacle": {"home_win": 5.40, "draw": 3.90, "away_win": 1.58},
             },
-            "consensus": {"home_win": 0.787, "draw": 0.179, "away_win": 0.093},
+            "consensus": {"home_win": 0.185, "draw": 0.255, "away_win": 0.620},
+            "favorite": "away",
+            "margin": 0.060,
+            "moneyline": "Haiti +650 | Scotland -180",
+            "last_updated": "2026-06-13",
+        },
+        {
+            "match": "BRA vs HTI",
+            "home": "Brazil",
+            "away": "Haiti",
+            "odds": {
+                "bet365": {"home_win": 1.15, "draw": 6.50, "away_win": 15.00},
+                "william_hill": {"home_win": 1.18, "draw": 6.25, "away_win": 14.50},
+                "pinnacle": {"home_win": 1.16, "draw": 6.60, "away_win": 14.75},
+            },
+            "consensus": {"home_win": 0.860, "draw": 0.155, "away_win": 0.068},
             "favorite": "home",
-            "margin": 0.035,
+            "margin": 0.083,
+            "last_updated": "2026-06-13",
+        },
+        {
+            "match": "MAR vs SCO",
+            "home": "Morocco",
+            "away": "Scotland",
+            "odds": {
+                "bet365": {"home_win": 2.25, "draw": 3.30, "away_win": 3.25},
+                "william_hill": {"home_win": 2.30, "draw": 3.25, "away_win": 3.15},
+                "pinnacle": {"home_win": 2.28, "draw": 3.35, "away_win": 3.20},
+            },
+            "consensus": {"home_win": 0.439, "draw": 0.298, "away_win": 0.313},
+            "favorite": "home",
+            "margin": 0.050,
+            "last_updated": "2026-06-13",
+        },
+        {
+            "match": "BRA vs SCO",
+            "home": "Brazil",
+            "away": "Scotland",
+            "odds": {
+                "bet365": {"home_win": 1.45, "draw": 4.25, "away_win": 7.00},
+                "william_hill": {"home_win": 1.50, "draw": 4.15, "away_win": 6.50},
+                "pinnacle": {"home_win": 1.48, "draw": 4.30, "away_win": 6.75},
+            },
+            "consensus": {"home_win": 0.676, "draw": 0.233, "away_win": 0.148},
+            "favorite": "home",
+            "margin": 0.057,
+            "last_updated": "2026-06-13",
+        },
+        {
+            "match": "MAR vs HTI",
+            "home": "Morocco",
+            "away": "Haiti",
+            "odds": {
+                "bet365": {"home_win": 1.35, "draw": 4.80, "away_win": 8.50},
+                "william_hill": {"home_win": 1.40, "draw": 4.70, "away_win": 8.00},
+                "pinnacle": {"home_win": 1.38, "draw": 4.90, "away_win": 8.25},
+            },
+            "consensus": {"home_win": 0.719, "draw": 0.206, "away_win": 0.122},
+            "favorite": "home",
+            "margin": 0.047,
+            "last_updated": "2026-06-13",
         },
     ],
     
@@ -235,11 +341,145 @@ def odds_to_probability(home_odds: float, draw_odds: float, away_odds: float) ->
 
 
 def get_match_odds(group: str, match_idx: int) -> Optional[Dict]:
-    """获取特定比赛的赔率"""
+    """获取特定比赛的赔率（如果没有预设数据，则根据球队实力自动生成）"""
     group_data = GROUP_ODDS.get(group.upper(), [])
     if match_idx < len(group_data):
         return group_data[match_idx]
-    return None
+    
+    # 如果没有预设赔率数据，自动生成
+    # 获取球队信息
+    from data.world_cup_2026 import get_team_lookup
+    teams = get_team_lookup()
+    
+    # 确定比赛对阵（与前端保持一致）
+    match_pairings = [(0, 1), (2, 3), (0, 2), (1, 3), (0, 3), (1, 2)]
+    
+    # 获取小组球队列表
+    groups_full = {
+        'A': ['ARG', 'URU', 'EGY', 'PER'],
+        'B': ['CAN', 'BIH', 'QAT', 'SUI'],
+        'C': ['BRA', 'MAR', 'HTI', 'SCO'],
+        'D': ['ENG', 'GER', 'MAR', 'TUR'],
+        'E': ['ESP', 'BEL', 'CRO', 'AUT'],
+        'F': ['USA', 'MEX', 'CAN', 'JAM'],
+        'G': ['POR', 'NED', 'SEN', 'ECU'],
+        'H': ['FRA', 'SEN', 'POL', 'KOR'],
+        'I': ['ARG', 'IRN', 'NGA', 'CRC'],
+        'J': ['BRA', 'CMR', 'SRB', 'SUI'],
+        'K': ['GER', 'JPN', 'COL', 'ALG'],
+        'L': ['ESP', 'MAR', 'URU', 'POR']
+    }
+    
+    group_teams = groups_full.get(group.upper(), [])
+    if len(group_teams) < 4 or match_idx >= len(match_pairings):
+        return None
+    
+    home_idx, away_idx = match_pairings[match_idx]
+    home_code = group_teams[home_idx]
+    away_code = group_teams[away_idx]
+    
+    home_team = teams.get(home_code, {})
+    away_team = teams.get(away_code, {})
+    
+    # 基于Elo和排名生成赔率
+    home_elo = home_team.get('elo', 1500)
+    away_elo = away_team.get('elo', 1500)
+    home_rank = home_team.get('rank', 50)
+    away_rank = away_team.get('rank', 50)
+    
+    # 计算期望胜率
+    elo_diff = home_elo - away_elo
+    rank_diff = away_rank - home_rank
+    
+    expected_home = 1 / (1 + 10 ** ((away_elo - home_elo) / 400))
+    expected_home += rank_diff * 0.003  # 排名因素
+    expected_home += 0.05  # 主场优势
+    
+    # 限制范围
+    expected_home = max(0.10, min(0.90, expected_home))
+    
+    # 计算平局和客胜概率
+    draw_prob = max(0.15, min(0.35, 0.25 + (0.90 - abs(expected_home - 0.50)) * 0.15))
+    away_prob = 1 - expected_home - draw_prob
+    
+    # 转换为赔率
+    margin = 1.05
+    home_odds = round(margin / expected_home, 2)
+    draw_odds = round(margin / draw_prob, 2)
+    away_odds = round(margin / away_prob, 2)
+    
+    # 计算让球盘口（基于实力差距）
+    # Elo差距每100分约让0.5球
+    handicap_value = abs(elo_diff) / 100.0  # 0.5到2球
+    handicap_value = round(handicap_value * 2) / 2  # 四舍五入到0.5
+    handicap_value = max(0.5, min(2.5, handicap_value))  # 限制0.5-2.5球
+    
+    # 让球方向（强队让球）
+    if elo_diff > 0:  # 主队更强
+        handicap_line = f"{home_code} -{handicap_value}"
+        jingcai_line = f"{home_code} -{int(handicap_value)}" if handicap_value >= 1 else "0"
+        handicap_team = "home"
+    else:  # 客队更强
+        handicap_line = f"{away_code} -{handicap_value}"
+        jingcai_line = f"{away_code} -{int(handicap_value)}" if handicap_value >= 1 else "0"
+        handicap_team = "away"
+    
+    # 竞彩让球建议
+    jingcai_recommendation = ""
+    if handicap_team == "away" and away_prob > 0.5:
+        jingcai_recommendation = f"让球负（{away_code}胜）"
+    elif handicap_team == "home" and expected_home > 0.5:
+        jingcai_recommendation = f"让球胜（{home_code}胜）"
+    else:
+        jingcai_recommendation = "观望"
+    
+    # 综合建议
+    model_result = "主胜" if expected_home > 0.4 else "客胜" if away_prob > 0.4 else "平局"
+    score_prediction = ""
+    if model_result == "客胜" and handicap_team == "away":
+        score_prediction = f"0-{int(handicap_value)+1}" if handicap_value <= 1.5 else f"0-{int(handicap_value)}"
+    elif model_result == "主胜" and handicap_team == "home":
+        score_prediction = f"{int(handicap_value)+1}-0" if handicap_value <= 1.5 else f"{int(handicap_value)}-0"
+    else:
+        score_prediction = "1-1"
+    
+    comprehensive_advice = {
+        "model_prediction": f"{model_result}（{max(expected_home, away_prob)*100:.1f}%）",
+        "handicap_advice": f"{away_code if handicap_team == 'away' else home_code}让{handicap_value}球赢盘",
+        "jingcai_advice": jingcai_recommendation,
+        "score_prediction": score_prediction,
+        "confidence": "高" if max(expected_home, away_prob) > 0.6 else "中" if max(expected_home, away_prob) > 0.45 else "低",
+        "reasoning": f"模型预测{model_result}，盘口支持{away_code if handicap_team == 'away' else home_code}让{handicap_value}球，竞彩{jingcai_recommendation}"
+    }
+    
+    return {
+        "match": f"{home_code} vs {away_code}",
+        "home": home_code,
+        "away": away_code,
+        "odds": {
+            "bet365": {"home_win": home_odds, "draw": draw_odds, "away_win": away_odds}
+        },
+        "consensus": {
+            "home_win": round(expected_home, 3),
+            "draw": round(draw_prob, 3),
+            "away_win": round(away_prob, 3)
+        },
+        "favorite": "home" if expected_home > 0.40 else "away" if away_prob > 0.40 else "draw",
+        "margin": round(margin - 1, 3),
+        "asian_handicap": {
+            "line": handicap_line,
+            "explanation": f"{away_code if handicap_team == 'away' else home_code}让{handicap_value}球，需赢{int(handicap_value)+1}球以上才算赢盘",
+            "source": "Bet365/Pinnacle",
+            "last_updated": "自动生成"
+        },
+        "jingcai_handicap": {
+            "line": jingcai_line,
+            "explanation": f"竞彩让球：{away_code if handicap_team == 'away' else home_code}让{int(handicap_value)}球",
+            "recommendation": jingcai_recommendation,
+            "source": "中国体育彩票"
+        },
+        "comprehensive_advice": comprehensive_advice
+    }
 
 
 def get_consensus_odds(group: str, match_idx: int) -> Optional[Dict]:

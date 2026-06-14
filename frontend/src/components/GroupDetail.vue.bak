@@ -9,21 +9,20 @@
             <span class="group-label">组</span>
             <span class="expand-icon">{{ expanded === gname ? '▲' : '▼' }}</span>
           </div>
-          <div v-if="groupStatic[gname]" class="group-preview">
-            <div v-for="t in groupStatic[gname]" :key="t.code" class="preview-row">
-              <span class="qualify-dot dot-gray"></span>
+          <div v-if="groupCache[gname]" class="group-preview">
+            <div v-for="t in groupCache[gname].standings.slice(0,4)" :key="t.code" class="preview-row">
+              <span :class="['qualify-dot', t.position <= 2 ? 'dot-green' : t.position === 3 ? 'dot-yellow' : 'dot-gray']"></span>
               <span class="preview-name">{{ t.name_cn }}</span>
               <span class="preview-rank">#{{ t.rank }}</span>
-              <span class="preview-pts">-</span>
+              <span class="preview-pts">{{ t.predicted_points }}分</span>
             </div>
           </div>
-          <div v-else class="group-preview-hint">
-            <span class="hint-text">点击查看详情</span>
+          <div v-else class="preview-loading">
+            <span class="loading-text">加载中...</span>
           </div>
         </div>
       </div>
 
-      <!-- 详情面板：有数据 -->
       <div v-if="expanded && groupCache[expanded]" class="group-detail-panel">
         <div class="detail-header">
           <span class="detail-title">{{ expanded }}组详情</span>
@@ -32,8 +31,8 @@
 
         <div class="standings-visual">
           <div class="standings-header">
-            <div class="standings-title">🏆 积分榜</div>
-            <div class="standings-proverb">{{ getRandomProverb() }}</div>
+            <span class="standings-title">🏆 积分榜</span>
+            <span class="standings-note">（基于预测结果，实际比赛积分）</span>
           </div>
           <div class="standings-bars">
             <div v-for="t in groupCache[expanded].standings" :key="t.code" 
@@ -68,14 +67,6 @@
                 <span :class="{'dm-predicted': m.prediction === 'HOME_WIN' || m.prediction === '主胜'}">{{ m.home_name_cn }}</span>
                 <span class="dm-vs">vs</span>
                 <span :class="{'dm-predicted': m.prediction === 'AWAY_WIN' || m.prediction === '客胜'}">{{ m.away_name_cn }}</span>
-              </div>
-              
-              <!-- 实际比赛结果（醒目显示） -->
-              <div v-if="m.status === 'finished' && m.actual_score" class="actual-result-box">
-                <div class="actual-score">{{ m.actual_score.result }}</div>
-                <div class="result-check" :class="m.prediction_correct ? 'correct' : 'wrong'">
-                  {{ m.prediction_correct ? '✅ 预测正确' : '❌ 预测错误' }}
-                </div>
               </div>
             </div>
             
@@ -140,26 +131,9 @@
             <div class="dm-bottom">
               <span class="dm-result">{{ getPredIcon(m.prediction) }} {{ getPredText(m.prediction) }}</span>
               <span :class="['dm-conf', 'conf-'+getConfLevel(m.confidence)]">{{ getConfText(m.confidence) }}</span>
-              <button v-if="m.status !== 'finished'" class="predict-btn" @click="showPredictDialog(expanded, idx, m)" style="background: linear-gradient(135deg, #667eea, #764ba2);">🎯 我来预测</button>
-              <span v-else class="match-ended">⛔ 比赛已结束</span>
-              <button 
-                class="calc-btn" 
-                :disabled="calcLoading"
-                :class="{'btn-loading': calcLoading}"
-                @click="showCalculation(expanded, idx, m)" 
-                style="background: linear-gradient(135deg, #3c8dbc, #2c3e50);">
-                <span v-if="!calcLoading">🧠 贝叶斯预测分析</span>
-                <span v-else>⏳ 加载中...</span>
-              </button>
-              <button 
-                class="model-btn" 
-                :disabled="modelLoading"
-                :class="{'btn-loading': modelLoading}"
-                @click="showModelPrediction(expanded, idx)" 
-                style="background: linear-gradient(135deg, #f39c12, #e74c3c);">
-                <span v-if="!modelLoading">📊 三模型对比</span>
-                <span v-else>⏳ 加载中...</span>
-              </button>
+              <button class="predict-btn" @click="showPredictDialog(expanded, idx, m)">🎯 我来预测</button>
+              <button class="calc-btn" @click="showCalculation(expanded, idx, m)">🧠 贝叶斯预测分析</button>
+              <button class="model-btn" @click="showModelPrediction(expanded, idx)">📊 三模型对比</button>
             </div>
           </div>
           
@@ -193,39 +167,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 详情面板：加载中（骨架屏） -->
-      <div v-else-if="expanded && !groupCache[expanded]" class="group-detail-panel skeleton-panel">
-        <div class="detail-header">
-          <div class="skeleton-box skeleton-title"></div>
-          <div class="skeleton-box skeleton-close"></div>
-        </div>
-        
-        <div class="skeleton-content">
-          <!-- 积分榜骨架 -->
-          <div class="skeleton-section">
-            <div class="skeleton-box skeleton-section-title"></div>
-            <div class="skeleton-standings">
-              <div v-for="i in 4" :key="i" class="skeleton-row">
-                <div class="skeleton-box skeleton-pos"></div>
-                <div class="skeleton-box skeleton-flag"></div>
-                <div class="skeleton-box skeleton-name"></div>
-                <div class="skeleton-box skeleton-pts"></div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 比赛列表骨架 -->
-          <div class="skeleton-section">
-            <div class="skeleton-box skeleton-section-title"></div>
-            <div class="skeleton-matches">
-              <div v-for="i in 6" :key="i" class="skeleton-match">
-                <div class="skeleton-box skeleton-match-item"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </template>
     
     <MatchCalculation :visible="showCalc" :calculation="currentCalc" @close="showCalc = false" />
@@ -248,27 +189,11 @@
             </div>
           </div>
           
-          <!-- 未登录提示 - 改为直接设置昵称 -->
+          <!-- 未登录提示 -->
           <div v-if="!currentUser" class="need-login">
             <div class="login-icon">🎯</div>
-            <p class="login-title">设置昵称参与预测</p>
-            <p class="login-desc">设置后将自动保存，下次无需重复输入</p>
-            
-            <div class="nickname-form">
-              <input 
-                v-model="tempNickname" 
-                type="text" 
-                class="nickname-input"
-                placeholder="请输入昵称（2-10字）"
-                maxlength="10"
-                @keyup.enter="submitNickname"
-              />
-              <button class="submit-nickname-btn" @click="submitNickname" :disabled="!tempNickname || tempNickname.length < 2">
-                确认
-              </button>
-            </div>
-            
-            <p v-if="nicknameError" class="nickname-error">{{ nicknameError }}</p>
+            <p>请先在「我预测」页面设置昵称</p>
+            <button class="goto-predict-btn" @click="gotoUserPredict">去设置昵称</button>
           </div>
           
           <!-- 已登录显示 -->
@@ -298,6 +223,30 @@
                   @click="predictResult = 'AWAY_WIN'"
                 >
                   ✈️ 客胜
+                </button>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>信心程度</label>
+              <div class="predict-options">
+                <button 
+                  :class="['conf-btn', 'conf-high', { active: predictConfidence === 'HIGH' }]"
+                  @click="predictConfidence = 'HIGH'"
+                >
+                  高信心
+                </button>
+                <button 
+                  :class="['conf-btn', 'conf-medium', { active: predictConfidence === 'MEDIUM' }]"
+                  @click="predictConfidence = 'MEDIUM'"
+                >
+                  中信心
+                </button>
+                <button 
+                  :class="['conf-btn', 'conf-low', { active: predictConfidence === 'LOW' }]"
+                  @click="predictConfidence = 'LOW'"
+                >
+                  博冷门
                 </button>
               </div>
             </div>
@@ -339,7 +288,7 @@
           <button 
             class="submit-btn" 
             @click="submitPredict"
-            :disabled="!predictResult"
+            :disabled="!predictResult || !predictConfidence"
           >
             提交预测
           </button>
@@ -350,19 +299,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, inject } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import MatchCalculation from './MatchCalculation.vue'
 import ModelPrediction from './ModelPrediction.vue'
 
 const loading = ref(false)
 const expanded = ref(null)
 const groupCache = reactive({})
-const groupStatic = reactive({})  // 静态数据（队伍列表）
 const showCalc = ref(false)
 const currentCalc = ref(null)
 const showModelPred = ref(false)
-const calcLoading = ref(false)
-const modelLoading = ref(false)
 const currentModelPred = ref(null)
 
 // 预测相关
@@ -372,14 +318,8 @@ const currentMatchGroup = ref(null)
 const currentMatchIdx = ref(null)
 const predictNickname = ref('')
 const predictResult = ref(null)
+const predictConfidence = ref(null)
 const matchStats = ref(null)
-
-// 用户相关
-const currentUser = inject('currentUser', ref(null))
-const updateUser = inject('updateUser', null)
-const showToast = inject('showToast', null)
-const tempNickname = ref('')
-const nicknameError = ref('')
 
 const TEAM_FLAGS = {
   'ARG': '🇦🇷', 'BRA': '🇧🇷', 'FRA': '🇫🇷', 'ENG': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'GER': '🇩🇪', 'ESP': '🇪🇸',
@@ -391,34 +331,6 @@ const TEAM_FLAGS = {
 }
 
 function getTeamFlag(code) { return TEAM_FLAGS[code] || '⚽' }
-
-// 随机足球谚语
-const PROVERBS = [
-  '⚡ 足球是圆的，一切皆有可能',
-  '🎯 预测有风险，下注需谨慎',
-  '⚽ 胜败乃兵家常事',
-  '🌟 狭路相逢勇者胜',
-  '🔥 一分耕耘一分收获',
-  '💡 知己知彼，百战不殆',
-  '🎲 运气也是实力的一部分',
-  '🚀 细节决定成败',
-  '💪 机会总是留给有准备的人',
-  '🎯 数据说话，理性预测',
-  '⚽ 足球场上无弱旅',
-  '🔥 永远不要低估一颗冠军的心',
-  '💡 过程比结果更重要',
-  '🌟 每一场比赛都是新的开始',
-  '⚡ 悬念才是足球的魅力',
-  '🎯 预测是一门艺术',
-  '⚽ 足球不仅是一项运动',
-  '💪 相信自己的判断',
-  '🎲 享受比赛，享受预测',
-  '🚀 冷门才是世界杯的魅力'
-]
-
-function getRandomProverb() {
-  return PROVERBS[Math.floor(Math.random() * PROVERBS.length)]
-}
 function getBarWidth(points) { return Math.min(100, (points / 9) * 100) }
 function getPredIcon(p) { 
   const iconMap = { HOME_WIN: '🏠', DRAW: '🤝', AWAY_WIN: '✈️', '主胜': '🏠', '平局': '🤝', '客胜': '✈️' }
@@ -466,73 +378,44 @@ function getQualificationProb(code) {
 
 async function loadGroup(g) {
   if (groupCache[g]) return
-  // 不设置全局loading，避免整个页面变空白
+  loading.value = true
   try {
     const resp = await fetch(`/worldcup/api/groups/${g}`)
     groupCache[g] = await resp.json()
-  } catch(e) { 
-    console.error('加载小组数据失败:', e)
-    // 加载失败时，显示错误提示
-    groupCache[g] = { error: '加载失败' }
-  }
+  } catch(e) { console.error(e) }
+  loading.value = false
 }
 
 
 async function toggleGroup(g) {
-  if (expanded.value === g) { 
-    expanded.value = null
-    return
-  }
+  if (expanded.value === g) { expanded.value = null; return }
   
-  // 立即展开面板（不要等待数据加载）
-  expanded.value = g
-  
-  // 如果数据未加载，异步加载
+  // 确保数据已加载
   if (!groupCache[g]) {
-    loadGroup(g)  // 不等待，异步加载
+    await loadGroup(g)
   }
+  
+  expanded.value = g
   
   // 展开时异步加载出线概率（不阻塞）
   loadQualificationProb(g)
-  
-  // 移动端：自动滚动到小组详情区域
-  setTimeout(() => {
-    const detailEl = document.querySelector('.group-detail-panel')
-    if (detailEl) {
-      detailEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, 200)
 }
 
 
 async function showCalculation(group, idx, match) {
-  if (calcLoading.value) return // 防止重复点击
-  calcLoading.value = true
   try {
     const resp = await fetch(`/worldcup/api/calculation/match/${group}/${idx}`)
     currentCalc.value = await resp.json()
     showCalc.value = true
-  } catch (e) {
-    console.error(e)
-    alert('加载失败，请重试')
-  } finally {
-    calcLoading.value = false
-  }
+  } catch (e) { console.error(e) }
 }
 
 async function showModelPrediction(group, idx) {
-  if (modelLoading.value) return // 防止重复点击
-  modelLoading.value = true
   try {
     const resp = await fetch(`/worldcup/api/models/predict/group/${group}/${idx}`)
     currentModelPred.value = await resp.json()
     showModelPred.value = true
-  } catch (e) {
-    console.error(e)
-    alert('加载失败，请重试')
-  } finally {
-    modelLoading.value = false
-  }
+  } catch (e) { console.error(e) }
 }
 
 async function showPredictDialog(group, idx, match) {
@@ -540,9 +423,6 @@ async function showPredictDialog(group, idx, match) {
   currentMatchIdx.value = idx
   currentMatch.value = match
   showPredict.value = true
-  
-  // 获取当前用户信息
-  await fetchCurrentUser()
   
   // 加载预测统计
   try {
@@ -553,82 +433,9 @@ async function showPredictDialog(group, idx, match) {
   }
 }
 
-async function fetchCurrentUser() {
-  try {
-    const resp = await fetch('/worldcup/api/user/me')
-    const data = await resp.json()
-    if (data.logged_in && data.user) {
-      currentUser.value = data.user
-      predictNickname.value = data.user.nickname
-    } else {
-      currentUser.value = null
-    }
-  } catch (e) {
-    console.error('获取用户信息失败:', e)
-    currentUser.value = null
-  }
-}
-
-async function submitNickname() {
-  if (!tempNickname.value || tempNickname.value.length < 2) {
-    nicknameError.value = '昵称至少需要2个字符'
-    return
-  }
-  
-  nicknameError.value = ''
-  
-  try {
-    // 生成或获取device_key
-    let deviceKey = localStorage.getItem('worldcup_device_key')
-    if (!deviceKey) {
-      deviceKey = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-      localStorage.setItem('worldcup_device_key', deviceKey)
-    }
-    
-    const resp = await fetch(`/worldcup/api/user/login?nickname=${encodeURIComponent(tempNickname.value.trim())}&device_key=${deviceKey}`, {
-      method: 'POST'
-    })
-    
-    const data = await resp.json()
-    
-    if (data.success) {
-      currentUser.value = data.user
-      predictNickname.value = data.user.nickname
-      tempNickname.value = ''
-      // 显示成功提示
-      if (showToast) {
-        showToast(data.message, 'success', 3000)
-      }
-      // 更新父组件的用户状态
-      if (updateUser) {
-        updateUser(data.user)
-      }
-    } else {
-      if (data.nickname_taken) {
-        nicknameError.value = '该昵称已被使用，请更换'
-      } else {
-        nicknameError.value = data.error || '设置失败，请重试'
-      }
-    }
-  } catch (e) {
-    console.error('设置昵称失败:', e)
-    nicknameError.value = '网络错误，请重试'
-  }
-}
-
 async function submitPredict() {
-  if (!predictNickname.value || !predictResult.value) {
+  if (!predictNickname.value || !predictResult.value || !predictConfidence.value) {
     return
-  }
-  
-  // 自动设置信心程度为MEDIUM
-  const autoConfidence = 'MEDIUM'
-  
-  // 获取device_key
-  let deviceKey = localStorage.getItem('worldcup_device_key')
-  if (!deviceKey) {
-    deviceKey = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-    localStorage.setItem('worldcup_device_key', deviceKey)
   }
   
   try {
@@ -637,11 +444,10 @@ async function submitPredict() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         nickname: predictNickname.value,
-        device_key: deviceKey,  // 添加device_key
         group: currentMatchGroup.value,
         match_idx: currentMatchIdx.value,
         prediction: predictResult.value,
-        confidence: autoConfidence,  // 自动设置
+        confidence: predictConfidence.value,
         home_code: currentMatch.value.home,
         away_code: currentMatch.value.away
       })
@@ -651,47 +457,31 @@ async function submitPredict() {
     
     if (data.success) {
       alert(`🎉 预测提交成功！\n\n${data.message}`)
-      if (showToast) {
-        showToast(data.message, 'success', 4000)
-      }
       showPredict.value = false
       predictResult.value = null
+      predictConfidence.value = null
       // 刷新统计
       const statsResp = await fetch(`/worldcup/api/user/prediction-stats/${currentMatchGroup.value}/${currentMatchIdx.value}`)
       matchStats.value = await statsResp.json()
     } else {
-      // alert('预测失败: ' + (data.error || '未知错误'))
-      if (showToast) {
-        showToast(data.error || '预测失败，请重试', 'error', 4000)
-      }
+      alert('预测失败: ' + (data.error || '未知错误'))
     }
   } catch (e) {
     console.error('提交预测失败', e)
-    // alert('提交失败，请重试')
-    if (showToast) {
-      showToast('提交失败，请重试', 'error', 4000)
-    }
+    alert('提交失败，请重试')
   }
 }
 
 // 页面加载时并发预加载所有小组数据
 onMounted(async () => {
-  // 加载小组静态信息（队伍列表）
-  await loadStaticGroups()
-  console.log('✅ 小组赛页面已就绪，点击小组加载数据')
+  const groups = 'ABCDEFGHIJKL'.split('')
+  
+  // 并发加载所有小组（不阻塞页面渲染）
+  // 使用 Promise.all 并发，而非串行
+  Promise.all(groups.map(g => loadGroup(g)))
+    .then(() => console.log('✅ 所有小组数据已加载'))
+    .catch(e => console.error('加载失败:', e))
 })
-
-async function loadStaticGroups() {
-  try {
-    const resp = await fetch('/worldcup/api/groups/static')
-    const data = await resp.json()
-    if (data.groups) {
-      Object.assign(groupStatic, data.groups)
-    }
-  } catch (e) {
-    console.error('加载小组静态信息失败:', e)
-  }
-}
 </script>
 
 <style scoped>
@@ -733,17 +523,6 @@ async function loadStaticGroups() {
   color: #666;
 }
 .preview-loading { padding:14px 0; text-align:center; }
-
-.group-preview-hint {
-  padding: 20px 0;
-  text-align: center;
-  color: #999;
-}
-
-.hint-text {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
 .loading-text { font-size:1rem; color:#1a472a; opacity:0.6; }
 
 .group-detail-panel { background:white; border-radius:12px; padding:18px; }
@@ -754,7 +533,6 @@ async function loadStaticGroups() {
 .standings-visual { margin-bottom:20px; }
 .standings-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
 .standings-title { font-weight:700; font-size:1.2rem; color:#1a472a; }
-.standings-proverb { font-size:0.9rem; color:#666; margin-top:8px; font-style:italic; }
 .simulate-btn { padding:6px 14px; background:#667eea; color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; }
 .standings-bars { display:flex; flex-direction:column; gap:8px; }
 .standing-row { display:flex; align-items:center; gap:10px; padding:8px 10px; background:#f8f9fa; border-radius:8px; }
@@ -774,46 +552,6 @@ async function loadStaticGroups() {
 .detail-match { padding:12px; background:#f8f9fa; border-radius:8px; margin-bottom:12px; }
 .dm-top { margin-bottom:6px; }
 .dm-teams { display:flex; justify-content:center; align-items:center; gap:12px; font-size:1.2rem; }
-
-/* 实际比赛结果显示 */
-.actual-result-box {
-  margin-top: 12px;
-  padding: 16px;
-  background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
-  border-radius: 12px;
-  border: 2px solid #28a745;
-  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
-}
-
-.actual-score {
-  font-size: 2.5rem;
-  font-weight: 800;
-  text-align: center;
-  color: #1a472a;
-  margin-bottom: 8px;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-}
-
-.result-check {
-  text-align: center;
-  font-size: 1.2rem;
-  font-weight: 700;
-  padding: 8px 16px;
-  border-radius: 8px;
-}
-
-.result-check.correct {
-  background: #d4edda;
-  color: #155724;
-  border: 2px solid #28a745;
-}
-
-.result-check.wrong {
-  background: #f8d7da;
-  color: #721c24;
-  border: 2px solid #dc3545;
-}
-
 .dm-predicted { font-weight:700; color:#1a472a; }
 .dm-vs { color:#999; font-size:1rem; }
 .dm-bar { display:flex; height:8px; border-radius:4px; overflow:hidden; margin-bottom:8px; }
@@ -831,41 +569,6 @@ async function loadStaticGroups() {
 .model-btn { background:#28a745; color:white; }
 .predict-btn { background:#f5576c; color:white; }
 .predict-btn:hover { background:#e91e63; }
-
-/* Loading状态 */
-.calc-btn:disabled, .model-btn:disabled, .predict-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.calc-btn.btn-loading, .model-btn.btn-loading {
-  animation: pulse 1.5s infinite;
-  background: #999 !important;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 0.8; }
-}
-
-/* 移动端触摸反馈 */
-@media (max-width: 768px) {
-  .calc-btn:active:not(:disabled), .model-btn:active:not(:disabled) {
-    transform: scale(0.95);
-    opacity: 0.8;
-  }
-}
-
-.match-ended {
-  padding: 6px 14px;
-  background: #f8d7da;
-  color: #721c24;
-  border: 2px solid #dc3545;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
 
 /* 三大数据因素样式 - 增强版 */
 .dm-data-factors {
@@ -1133,100 +836,6 @@ async function loadStaticGroups() {
   padding: 20px;
 }
 
-/* 未登录提示样式 - 现代化设计 */
-.need-login {
-  text-align: center;
-  padding: 40px 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  border-radius: 12px;
-  margin: 20px 0;
-}
-
-.login-icon {
-  font-size: 4rem;
-  margin-bottom: 16px;
-  animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-.login-title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #333;
-  margin: 16px 0 8px 0;
-}
-
-.login-desc {
-  font-size: 0.9rem;
-  color: #666;
-  margin: 0 0 24px 0;
-}
-
-.nickname-form {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.nickname-input {
-  flex: 1;
-  max-width: 280px;
-  padding: 12px 16px;
-  font-size: 1rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  outline: none;
-  transition: all 0.3s;
-}
-
-.nickname-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.submit-nickname-btn {
-  padding: 12px 28px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-.submit-nickname-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-}
-
-.submit-nickname-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.submit-nickname-btn:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.nickname-error {
-  color: #dc3545;
-  font-size: 0.9rem;
-  margin: 8px 0 0 0;
-  padding: 8px 12px;
-  background: #f8d7da;
-  border-radius: 6px;
-}
-
 .predict-match-info {
   text-align: center;
   margin-bottom: 24px;
@@ -1468,163 +1077,5 @@ async function loadStaticGroups() {
 
 @media (max-width: 768px) {
   .groups-grid { grid-template-columns:repeat(2, 1fr); }
-  
-  /* 宽度修复 */
-  .group-detail-panel {
-    overflow-x: hidden;
-    max-width: 100%;
-  }
-  
-  .detail-match {
-    overflow-x: hidden;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .dm-bar {
-    max-width: 100%;
-  }
-  
-  .standings-bars {
-    overflow-x: hidden;
-    max-width: 100%;
-  }
-  
-  .standing-row {
-    padding: 10px;
-    flex-wrap: wrap;
-  }
-  
-  .team-rank { display: none; }
-  
-  .standings-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .standings-proverb {
-    font-size: 0.85rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .groups-grid { grid-template-columns: 1fr; }
-  
-  .standing-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 8px;
-  }
-  
-  .standing-row > * {
-    width: 100%;
-  }
-  
-  .standing-row > span:first-child {
-    width: auto;
-  }
-  
-  .team-predicted-pts,
-  .team-actual-pts {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
-  }
-  
-  .dm-bottom {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  
-  .calc-btn, .model-btn, .predict-btn {
-    width: 100%;
-    padding: 10px 12px;
-    font-size: 0.95rem;
-  }
-}
-/* 骨架屏样式 */
-.skeleton-panel {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.skeleton-box {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 4px;
-}
-
-.skeleton-title {
-  width: 120px;
-  height: 24px;
-}
-
-.skeleton-close {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-}
-
-.skeleton-section-title {
-  width: 150px;
-  height: 20px;
-  margin-bottom: 15px;
-}
-
-.skeleton-content {
-  padding: 20px;
-}
-
-.skeleton-section {
-  margin-bottom: 30px;
-}
-
-.skeleton-standings .skeleton-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.skeleton-pos {
-  width: 30px;
-  height: 30px;
-}
-
-.skeleton-flag {
-  width: 30px;
-  height: 30px;
-}
-
-.skeleton-name {
-  flex: 1;
-  height: 20px;
-}
-
-.skeleton-pts {
-  width: 60px;
-  height: 20px;
-}
-
-.skeleton-matches .skeleton-match {
-  margin-bottom: 15px;
-}
-
-.skeleton-match-item {
-  width: 100%;
-  height: 80px;
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.95; }
 }
 </style>

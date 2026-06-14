@@ -239,8 +239,8 @@ async def get_match_calculation(group: str, match_index: int) -> Dict[str, Any]:
     if len(group_teams) < 4:
         return {"error": "小组不存在"}
     
-    # 确定比赛对阵
-    match_pairings = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
+    # 确定比赛对阵（与前端 generate_match_schedule 保持一致）
+    match_pairings = [(0, 1), (2, 3), (0, 2), (1, 3), (0, 3), (1, 2)]
     
     if match_index < 0 or match_index >= len(match_pairings):
         return {"error": "比赛索引无效"}
@@ -250,6 +250,52 @@ async def get_match_calculation(group: str, match_index: int) -> Dict[str, Any]:
     away_team = group_teams[away_idx]
     home_code = home_team["code"]
     away_code = away_team["code"]
+    
+    # 获取实时比赛数据
+    match_status = "待揭晓"
+    home_score = None
+    away_score = None
+    
+    # 球队代码映射（API返回的代码 -> 本地代码）
+    code_mapping = {
+        "RSA": "ZAF",  # South Africa
+        "KSA": "SAU",  # Saudi Arabia
+    }
+    
+    try:
+        from services.data_service import get_data_service
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        ds = get_data_service()
+        matches = await ds.get_matches(group=group)
+        
+        logger.info(f"📊 查找比赛: {home_code} vs {away_code}, 共{len(matches)}场比赛")
+        
+        # 查找对应的比赛
+        for match in matches:
+            # 获取比赛的主客队代码，并映射到本地代码
+            match_home = match.get('home') or match.home_code
+            match_away = match.get('away') or match.away_code
+            
+            # 映射到本地代码
+            local_home = code_mapping.get(match_home, match_home)
+            local_away = code_mapping.get(match_away, match_away)
+            
+            logger.info(f"  比赛: {match_home}({local_home}) vs {match_away}({local_away}), 状态: {match.get('status')}")
+            
+            if local_home == home_code and local_away == away_code:
+                match_status_raw = match.get('status')
+                match_status = "已结束" if match_status_raw == "finished" else "进行中" if match_status_raw == "live" else "待开始"
+                home_score = match.get('home_score')
+                away_score = match.get('away_score')
+                logger.info(f"  ✅ 找到比赛: {home_code} vs {away_code}, 状态: {match_status}, 比分: {home_score}-{away_score}")
+                break
+    except Exception as e:
+        # 获取失败，使用默认值
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"❌ 获取比赛数据失败: {e}", exc_info=True)
     
     # 使用集成模型预测（确保与三模型对比数据一致）
     ensemble = get_ensemble()
@@ -334,7 +380,13 @@ async def get_match_calculation(group: str, match_index: int) -> Dict[str, Any]:
         },
         "prediction": "主胜" if bayesian_pred.home_win_prob > bayesian_pred.draw_prob and bayesian_pred.home_win_prob > bayesian_pred.away_win_prob else "客胜" if bayesian_pred.away_win_prob > bayesian_pred.home_win_prob else "平局",
         "confidence": "高" if bayesian_pred.confidence > 0.5 else "中" if bayesian_pred.confidence > 0.3 else "低",
-        "status": "待揭晓",
+        "status": match_status,
+        # 新增：实际比分
+        "actual_score": {
+            "home_score": home_score,
+            "away_score": away_score,
+            "result": f"{home_score}-{away_score}" if home_score is not None and away_score is not None else None
+        } if home_score is not None else None,
         # 新增：比分预测
         "score_prediction": {
             "expected_goals": score_pred["expected_goals"],
